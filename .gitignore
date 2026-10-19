@@ -9,6 +9,7 @@ coverage/
 .env.local
 # Local credential notes (e.g. "كلمات المرور.local.md")
 *.local.md
+*.local.env
 **/uploads/**
 !**/uploads/**/
 !**/uploads/**/.gitkeep
