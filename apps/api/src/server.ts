@@ -55,9 +55,13 @@ app.use('/api/teacher',teacher);
 app.use('/api',student);
 app.use((_req,res)=>res.status(404).json({error:'المسار غير موجود'}));
 app.use(errorHandler);
-const server=app.listen(config.port,'127.0.0.1',()=>console.log(`API listening on http://127.0.0.1:${config.port}`));
+// API_EMBEDDED: server.mjs mounts `app` on the same HTTP server as Next (single-process hosts such as Hostinger).
+const server=process.env.API_EMBEDDED==='1'?null:app.listen(config.port,'127.0.0.1',()=>console.log(`API listening on http://127.0.0.1:${config.port}`));
 startNotificationWorker();
 startTelegramPoller();
 void resumeDriveImports().catch(error=>console.error('Drive video conversion could not resume:',error));
-async function shutdown(){server.close(async()=>{await pool.end();process.exit(0);});setTimeout(()=>process.exit(1),10000).unref();}
+async function shutdown(){
+  if(!server){await pool.end().catch(()=>{});process.exit(0);}
+  server.close(async()=>{await pool.end();process.exit(0);});setTimeout(()=>process.exit(1),10000).unref();
+}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);

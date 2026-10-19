@@ -2,6 +2,8 @@
   "name": "mudarris-platform-next",
   "version": "1.0.0",
   "private": true,
+  "main": "server.mjs",
+  "engines": {"node": ">=20"},
   "workspaces": ["apps/web", "apps/api"],
   "scripts": {
     "dev": "node scripts/run.mjs dev",
@@ -9,6 +11,7 @@
     "dev:web": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/api run build && npm --workspace apps/web run build",
     "start": "node scripts/run.mjs start",
+    "start:hosting": "node server.mjs",
     "setup:local": "node scripts/setup-local.mjs",
     "db:migrate": "npm --workspace apps/api run db:migrate",
     "typecheck": "npm --workspace apps/api run build && npm --workspace apps/web run typecheck",
