@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS platform_settings (
+  name VARCHAR(80) NOT NULL PRIMARY KEY,
+  value VARCHAR(255) NOT NULL,
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT IGNORE INTO platform_settings(name,value) VALUES ('capture_lock_minutes','60')

@@ -1,0 +1,21 @@
+{
+  "name": "mudarris-platform-next",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/web", "apps/api"],
+  "scripts": {
+    "dev": "node scripts/run.mjs dev",
+    "dev:api": "npm --workspace apps/api run dev",
+    "dev:web": "npm --workspace apps/web run dev",
+    "build": "npm --workspace apps/api run build && npm --workspace apps/web run build",
+    "start": "node scripts/run.mjs start",
+    "setup:local": "node scripts/setup-local.mjs",
+    "db:migrate": "npm --workspace apps/api run db:migrate",
+    "typecheck": "npm --workspace apps/api run build && npm --workspace apps/web run typecheck",
+    "test:integration": "npm --workspace apps/api run build && node scripts/integration.mjs",
+    "start:api": "npm --workspace apps/api run start",
+    "start:web": "npm --workspace apps/web run start",
+    "check:production": "node scripts/check-production.mjs",
+    "db:backup": "node scripts/backup-mysql.mjs"
+  }
+}

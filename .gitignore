@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+coverage/
+.npm-cache/
+.local/
+*.tsbuildinfo
+.env
+.env.local
+# Local credential notes (e.g. "كلمات المرور.local.md")
+*.local.md
+**/uploads/**
+!**/uploads/**/
+!**/uploads/**/.gitkeep

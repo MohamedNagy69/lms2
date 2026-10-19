@@ -1,0 +1,278 @@
+CREATE TABLE IF NOT EXISTS grades (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(80) NOT NULL UNIQUE,
+  slug VARCHAR(90) NOT NULL UNIQUE,
+  `order` INT NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  password VARCHAR(255) NOT NULL,
+  last_login DATETIME(3) NULL,
+  is_superuser BOOLEAN NOT NULL DEFAULT FALSE,
+  username VARCHAR(150) NOT NULL UNIQUE,
+  first_name VARCHAR(150) NOT NULL DEFAULT '',
+  last_name VARCHAR(150) NOT NULL DEFAULT '',
+  email VARCHAR(254) NOT NULL DEFAULT '',
+  is_staff BOOLEAN NOT NULL DEFAULT FALSE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  date_joined DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  role ENUM('student','teacher') NOT NULL DEFAULT 'student',
+  phone VARCHAR(20) NOT NULL DEFAULT '',
+  parent_phone VARCHAR(20) NOT NULL DEFAULT '',
+  mother_phone VARCHAR(20) NOT NULL DEFAULT '',
+  father_email VARCHAR(254) NOT NULL DEFAULT '',
+  mother_email VARCHAR(254) NOT NULL DEFAULT '',
+  telegram_chat_id VARCHAR(50) NOT NULL DEFAULT '',
+  father_telegram_chat_id VARCHAR(50) NOT NULL DEFAULT '',
+  mother_telegram_chat_id VARCHAR(50) NOT NULL DEFAULT '',
+  city VARCHAR(60) NOT NULL DEFAULT '',
+  grade_id BIGINT UNSIGNED NULL,
+  bio TEXT NOT NULL,
+  avatar_color VARCHAR(20) NOT NULL DEFAULT 'brand',
+  active_session_key VARCHAR(40) NOT NULL DEFAULT '',
+  screenshot_strikes INT NOT NULL DEFAULT 0,
+  locked_until DATETIME(3) NULL,
+  is_security_banned BOOLEAN NOT NULL DEFAULT FALSE,
+  banned_until DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_users_role_grade (role, grade_id),
+  INDEX idx_users_phone (phone),
+  CONSTRAINT fk_users_grade FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS courses (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(150) NOT NULL,
+  slug VARCHAR(170) NOT NULL UNIQUE,
+  grade_id BIGINT UNSIGNED NOT NULL,
+  summary VARCHAR(250) NOT NULL DEFAULT '',
+  description TEXT NOT NULL,
+  price INT UNSIGNED NOT NULL DEFAULT 0,
+  is_free BOOLEAN NOT NULL DEFAULT FALSE,
+  is_published BOOLEAN NOT NULL DEFAULT TRUE,
+  enable_watermark BOOLEAN NOT NULL DEFAULT TRUE,
+  master_access_code VARCHAR(50) NOT NULL DEFAULT '',
+  emoji VARCHAR(8) NOT NULL DEFAULT '📘',
+  accent VARCHAR(20) NOT NULL DEFAULT 'brand',
+  `order` INT NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_courses_grade_published (grade_id, is_published),
+  CONSTRAINT fk_courses_grade FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS lectures (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  course_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  description TEXT NOT NULL,
+  `order` INT NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_lectures_course_order (course_id, `order`),
+  CONSTRAINT fk_lectures_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS lessons (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  lecture_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  description TEXT NOT NULL,
+  video_source ENUM('youtube','file','drive') NOT NULL DEFAULT 'youtube',
+  video_file VARCHAR(500) NULL,
+  youtube_id VARCHAR(150) NOT NULL DEFAULT '',
+  drive_url VARCHAR(255) NOT NULL DEFAULT '',
+  duration_minutes INT UNSIGNED NOT NULL DEFAULT 0,
+  `order` INT NOT NULL DEFAULT 0,
+  is_preview BOOLEAN NOT NULL DEFAULT FALSE,
+  enable_watermark BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_lessons_lecture_order (lecture_id, `order`),
+  CONSTRAINT fk_lessons_lecture FOREIGN KEY (lecture_id) REFERENCES lectures(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  lesson_id BIGINT UNSIGNED NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  kind ENUM('file','link') NOT NULL DEFAULT 'file',
+  file VARCHAR(500) NOT NULL DEFAULT '',
+  url VARCHAR(2048) NOT NULL DEFAULT '',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_attachments_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS enrollments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  student_id BIGINT UNSIGNED NOT NULL,
+  course_id BIGINT UNSIGNED NOT NULL,
+  status ENUM('active','pending') NOT NULL DEFAULT 'pending',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uq_enrollment_student_course (student_id, course_id),
+  INDEX idx_enrollments_course_status (course_id, status),
+  CONSTRAINT fk_enrollments_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_enrollments_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS access_codes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(20) NOT NULL UNIQUE,
+  course_id BIGINT UNSIGNED NULL,
+  is_used BOOLEAN NOT NULL DEFAULT FALSE,
+  used_by_id BIGINT UNSIGNED NULL,
+  used_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_access_codes_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+  CONSTRAINT fk_access_codes_user FOREIGN KEY (used_by_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS lesson_progress (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  student_id BIGINT UNSIGNED NOT NULL,
+  lesson_id BIGINT UNSIGNED NOT NULL,
+  is_completed BOOLEAN NOT NULL DEFAULT TRUE,
+  completed_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uq_progress_student_lesson (student_id, lesson_id),
+  CONSTRAINT fk_progress_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_progress_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS exams (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  course_id BIGINT UNSIGNED NOT NULL,
+  lesson_id BIGINT UNSIGNED NULL,
+  title VARCHAR(150) NOT NULL,
+  description TEXT NOT NULL,
+  duration_minutes INT UNSIGNED NOT NULL DEFAULT 15,
+  pass_percent INT UNSIGNED NOT NULL DEFAULT 50,
+  is_published BOOLEAN NOT NULL DEFAULT TRUE,
+  allow_retake BOOLEAN NOT NULL DEFAULT TRUE,
+  max_attempts INT UNSIGNED NOT NULL DEFAULT 1,
+  require_webcam BOOLEAN NOT NULL DEFAULT FALSE,
+  require_fullscreen BOOLEAN NOT NULL DEFAULT TRUE,
+  prevent_copy_paste BOOLEAN NOT NULL DEFAULT FALSE,
+  shuffle_questions BOOLEAN NOT NULL DEFAULT FALSE,
+  ai_multi_person_detection BOOLEAN NOT NULL DEFAULT FALSE,
+  ai_absence_and_camera_block BOOLEAN NOT NULL DEFAULT FALSE,
+  prevent_multiple_screens BOOLEAN NOT NULL DEFAULT FALSE,
+  max_infractions INT UNSIGNED NOT NULL DEFAULT 0,
+  auto_send_result BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_exams_course_published (course_id, is_published),
+  CONSTRAINT fk_exams_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+  CONSTRAINT fk_exams_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS questions (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  exam_id BIGINT UNSIGNED NOT NULL,
+  question_type ENUM('mcq','essay') NOT NULL DEFAULT 'mcq',
+  text TEXT NOT NULL,
+  image VARCHAR(500) NULL,
+  points INT UNSIGNED NOT NULL DEFAULT 1,
+  `order` INT NOT NULL DEFAULT 0,
+  explanation TEXT NOT NULL,
+  INDEX idx_questions_exam_order (exam_id, `order`),
+  CONSTRAINT fk_questions_exam FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS choices (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  question_id BIGINT UNSIGNED NOT NULL,
+  text VARCHAR(250) NOT NULL,
+  is_correct BOOLEAN NOT NULL DEFAULT FALSE,
+  `order` INT NOT NULL DEFAULT 0,
+  CONSTRAINT fk_choices_question FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS exam_attempts (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  student_id BIGINT UNSIGNED NOT NULL,
+  exam_id BIGINT UNSIGNED NOT NULL,
+  started_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  submitted_at DATETIME(3) NULL,
+  score INT UNSIGNED NOT NULL DEFAULT 0,
+  max_score INT UNSIGNED NOT NULL DEFAULT 0,
+  percent DOUBLE NOT NULL DEFAULT 0,
+  infractions_count INT UNSIGNED NOT NULL DEFAULT 0,
+  INDEX idx_attempt_student_exam (student_id, exam_id, started_at),
+  CONSTRAINT fk_attempts_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_attempts_exam FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS attempt_answers (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  attempt_id BIGINT UNSIGNED NOT NULL,
+  question_id BIGINT UNSIGNED NOT NULL,
+  choice_id BIGINT UNSIGNED NULL,
+  text_answer TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL DEFAULT FALSE,
+  score_awarded INT UNSIGNED NOT NULL DEFAULT 0,
+  teacher_feedback TEXT NOT NULL,
+  UNIQUE KEY uq_answer_attempt_question (attempt_id, question_id),
+  CONSTRAINT fk_answers_attempt FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_answers_question FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+  CONSTRAINT fk_answers_choice FOREIGN KEY (choice_id) REFERENCES choices(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(150) NOT NULL,
+  body TEXT NOT NULL,
+  grade_id BIGINT UNSIGNED NULL,
+  is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_announcements_grade FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS testimonials (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  student_name VARCHAR(80) NOT NULL,
+  grade_name VARCHAR(80) NOT NULL DEFAULT '',
+  text TEXT NOT NULL,
+  rating TINYINT UNSIGNED NOT NULL DEFAULT 5,
+  is_visible BOOLEAN NOT NULL DEFAULT TRUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(80) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_contact_messages_unread (is_read, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS student_devices (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  student_id BIGINT UNSIGNED NOT NULL,
+  device_id VARCHAR(64) NOT NULL,
+  device_name VARCHAR(150) NOT NULL,
+  ip_address VARCHAR(45) NOT NULL DEFAULT '',
+  user_agent TEXT NOT NULL,
+  session_key VARCHAR(40) NOT NULL DEFAULT '',
+  last_login DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  UNIQUE KEY uq_device_student_device (student_id, device_id),
+  CONSTRAINT fk_devices_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS parent_report_views (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  student_id BIGINT UNSIGNED NOT NULL,
+  course_id BIGINT UNSIGNED NULL,
+  week_start DATE NOT NULL,
+  week_end DATE NOT NULL,
+  token VARCHAR(64) NOT NULL UNIQUE,
+  recipient_role ENUM('parent','mother','student','general') NOT NULL DEFAULT 'parent',
+  is_viewed BOOLEAN NOT NULL DEFAULT FALSE,
+  first_viewed_at DATETIME(3) NULL,
+  last_viewed_at DATETIME(3) NULL,
+  view_count INT UNSIGNED NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_report_views_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_report_views_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
