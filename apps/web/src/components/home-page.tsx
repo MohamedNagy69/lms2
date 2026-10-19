@@ -13,8 +13,9 @@ export function Home(){
     <section className="landing-hero">
       <div className="landing-copy">
         <span className="badge"><span className="status-dot"/> {site.subject}</span>
-        <h1>طريقك الي التفوق<br/><em>يبدأ بخطوة</em></h1>
-        <p className="landing-description">هدفنا... تفوقك في اللغة العربية<br/>شرح تفهمه، تدريب يثبّت المعلومة<br/>ومتابعة تجعلك تري تقدّمك أمام عينيك</p>
+        <h1><span>طريقك الي التفوق</span><br/><em>يبدأ بخطوة</em></h1>
+        <p className="landing-lead">هدفنا... تفوقك في اللغة العربية</p>
+        <p className="landing-description">شرح تفهمه، تدريب يثبّت المعلومة، ومتابعة تجعلك تري تقدّمك أمام عينيك.</p>
         <div className="actions"><Link className="button" href="/courses">ابدأ بالمقررات <BrandIcon kind="arrow"/></Link><Link className="button secondary" href="/register">أنشئ حسابك</Link></div>
         {stats.students>0&&<div className="hero-proof"><div className="proof-avatars" aria-hidden="true">{['م','س','ف','ع'].map(letter=><span key={letter}>{letter}</span>)}</div><p><strong>+{stats.students} طالب</strong> بيذاكروا على المنصة دلوقتي</p></div>}
         <ul className="landing-trust" aria-label="مميزات المنصة">{['شرح واضح','تدريب فعلي','متابعة مستمرة'].map(item=><li key={item}><BrandIcon kind="check"/>{item}</li>)}</ul>
