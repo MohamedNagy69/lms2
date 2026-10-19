@@ -10,7 +10,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
 process.env.NODE_ENV='production';
 process.env.API_EMBEDDED='1';
-process.env.TRUST_PROXY??='1';
+process.env.TRUST_PROXY||='1';
 // Keep uploads outside the deploy folder so redeploys from GitHub don't wipe videos.
 process.env.UPLOAD_ROOT||=path.join(os.homedir(),'mudarris-uploads');
 const uploads=path.resolve(root,process.env.UPLOAD_ROOT);
