@@ -36,7 +36,7 @@ function SiteFooter({dashboard,signedIn,teacher}:{dashboard:boolean;signedIn:boo
   return <footer className={`site-footer${dashboard?' is-compact':''}`}>
     <div className="container">
       {!dashboard&&<div className="footer-cta">
-        <div><span className="eyebrow">جاهز تبدأ؟</span><h2>{signedIn?<>كمّل رحلتك… <em>درسك الجاي مستنيك.</em></>:<>خطوتك الجاية في العربي <em>تبدأ النهارده.</em></>}</h2><p>شرح منظّم، تدريب حقيقي، ومتابعة تخلّيك تشوف تقدّمك أول بأول.</p></div>
+        <div><span className="eyebrow">جاهز تبدأ؟</span><h2>{signedIn?<>كمّل رحلتك… <em>درسك الجاي في انتظارك</em></>:<>كمّل رحلتك… <em>درسك الجاي في انتظارك</em></>}</h2><p>شرح منظّم، تدريب حقيقي، ومتابعة تخلّيك تشوف تقدّمك أول بأول.</p></div>
         <div className="actions">{signedIn?<Link className="button" href={home}>افتح لوحتك <BrandIcon kind="arrow"/></Link>:<Link className="button" href="/register">أنشئ حسابك مجانًا <BrandIcon kind="arrow"/></Link>}<Link className="button secondary" href="/courses">تصفّح المقررات</Link></div>
       </div>}
       <div className="footer-grid">
