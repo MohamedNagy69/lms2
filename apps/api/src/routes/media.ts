@@ -5,7 +5,7 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { db } from '../db/index.js';
@@ -13,7 +13,7 @@ import { config } from '../config.js';
 import { authenticated, teacherOnly, isTeacher } from '../lib/auth.js';
 import { authorizedLesson } from '../lib/catalog.js';
 import { ensure, id, HttpError } from '../lib/errors.js';
-import {encryptVideo,encryptVideoCopy,encryptedVideoHeader,decryptedVideoRange,reencryptedVideoRange,streamCipherFor,videoHeaderSize} from '../lib/video-crypto.js';
+import {encryptVideo,encryptVideoCopy,encryptedVideoHeader,decryptedVideoRange,reencryptedVideoRange,streamCipherFor,videoFingerprint,videoHeaderSize} from '../lib/video-crypto.js';
 import { validateSignaturePath } from '../lib/file-signature.js';
 import { downloadDriveVideo } from '../lib/drive-import.js';
 export const media=Router();
@@ -135,8 +135,7 @@ async function authorizeVideoStream(req:Request,res:Response){
   let token:jwt.JwtPayload;
   try {token=jwt.verify(raw,config.secret,{algorithms:['HS256'],audience:'video'}) as jwt.JwtPayload;}catch{throw new HttpError(403,'انتهت صلاحية رابط الفيديو، أعد فتح الدرس');}
   ensure(token.lesson===lesson.id && token.sid===(req.sessionId||'preview') && token.uid===(req.user?.id||null),403,'الرابط غير صالح');
-  const fingerprint=createHash('sha256').update(`${req.ip||''}|${req.get('user-agent')||''}`).digest('base64url').slice(0,24);
-  ensure(token.fp===fingerprint,403,'رابط الفيديو مرتبط بالجهاز الذي فتح الدرس');
+  ensure(token.fp===videoFingerprint(req.get('user-agent')),403,'رابط الفيديو مرتبط بالجهاز الذي فتح الدرس');
   ensure(lesson.video_source==='file' && lesson.video_file,404,'الفيديو غير موجود');
   const referer=String(req.headers.referer||'');
   try{

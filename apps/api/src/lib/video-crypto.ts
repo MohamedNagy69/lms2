@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import {createReadStream,createWriteStream} from 'node:fs';
-import {createCipheriv,createDecipheriv,createHmac,randomBytes} from 'node:crypto';
+import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes} from 'node:crypto';
 import {pipeline} from 'node:stream/promises';
 import {Transform} from 'node:stream';
 import path from 'node:path';
@@ -50,6 +50,13 @@ export async function encryptVideoCopy(source:string,destination:string){
     await new Promise<void>((resolve,reject)=>output.write(Buffer.concat([magic,iv]),error=>error?reject(error):resolve()));
     await pipeline(createReadStream(source),createCipheriv('aes-256-ctr',secret,iv),output);
   }catch(error){output.destroy();await fs.unlink(destination).catch(()=>{});throw error;}
+}
+
+// Ties a video token to the browser that opened the lesson (the token is also bound to its session and user).
+// The client IP is left out on purpose: behind Hostinger's CDN the address the app sees changes between requests
+// (different edge nodes, IPv4/IPv6), which rejected every chunk after the first and broke playback.
+export function videoFingerprint(userAgent:string|undefined){
+  return createHash('sha256').update(`video-fp|${userAgent||''}`).digest('base64url').slice(0,24);
 }
 
 // Per-stream key for the protected player. Chunks travel as opaque AES-CTR ciphertext (not a video file), so

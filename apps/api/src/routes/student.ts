@@ -11,7 +11,7 @@ import { attemptFor, examQuestions, finishAttempt, startExam } from '../services
 import { reportFor } from '../services/reports.js';
 import { config } from '../config.js';
 import {queueResults} from '../services/notifications.js';
-import {streamCipherFor} from '../lib/video-crypto.js';
+import {streamCipherFor,videoFingerprint} from '../lib/video-crypto.js';
 export const student = Router();
 const enrollmentLimit = rateLimit({windowMs:15*60_000,limit:20,keyGenerator:req=>String(req.user!.id),standardHeaders:'draft-8',legacyHeaders:false,message:{error:'محاولات تفعيل كثيرة. حاول بعد قليل.'}});
 const resultResendLimit = rateLimit({windowMs:15*60_000,limit:3,keyGenerator:req=>String(req.user!.id),standardHeaders:'draft-8',legacyHeaders:false,message:{error:'انتظر قليلًا قبل إعادة إرسال النتيجة.'}});
@@ -27,9 +27,8 @@ student.get('/lessons/:id', async (req, res) => {
   const attachments = await db.rows('SELECT id,title,kind,url FROM attachments WHERE lesson_id=?', [lesson.id]);
   const siblingLessons = await db.rows('SELECT l.id,l.title FROM lessons l JOIN lectures t ON t.id=l.lecture_id WHERE t.course_id=? ORDER BY t.`order`,t.id,l.`order`,l.id', [course.id]);
   const progress = req.user ? await db.one('SELECT is_completed FROM lesson_progress WHERE student_id=? AND lesson_id=?', [req.user.id, lesson.id]) : null;
-  const videoFingerprint=createHash('sha256').update(`${req.ip||''}|${req.get('user-agent')||''}`).digest('base64url').slice(0,24);
   const token = req.user && lesson.video_source === 'file' && lesson.video_file
-    ? jwt.sign({ lesson: lesson.id, sid: req.sessionId || 'preview', uid: req.user?.id || null, fp:videoFingerprint }, config.secret, { algorithm: 'HS256', audience: 'video', expiresIn: '6h' })
+    ? jwt.sign({ lesson: lesson.id, sid: req.sessionId || 'preview', uid: req.user?.id || null, fp:videoFingerprint(req.get('user-agent')) }, config.secret, { algorithm: 'HS256', audience: 'video', expiresIn: '6h' })
     : null;
   const demoVideo=lesson.video_source==='youtube' && ['aircAruvnKk','kYB8IZa5AuE','9vJRopau0g0','ZM8ECpBuQYE','p7bzE1E5PMY'].includes(String(lesson.youtube_id))
     || lesson.video_source==='drive' && String(lesson.drive_url).includes('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
