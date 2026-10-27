@@ -1,0 +1,2 @@
+# Applied migrations are checksummed byte for byte; keep them LF on every checkout (Windows autocrlf included).
+apps/api/db/migrations/*.sql text eol=lf
