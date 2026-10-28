@@ -37,6 +37,10 @@ student.get('/lessons/:id', async (req, res) => {
   // the Drive link itself (Drive's player streams straight from Google, where download managers grab it).
   const { video_file, video_import_error, ...safe } = lesson;
   if (lesson.video_source === 'drive' && !isTeacher(req.user)) { safe.drive_url = ''; safe.video_preparing = lesson.video_import_status !== 'failed'; }
+  // The teacher still previews Drive's own player, and is told what students see until the protected copy exists.
+  if (lesson.video_source === 'drive' && isTeacher(req.user)) safe.teacher_video_note = lesson.video_import_status === 'failed'
+    ? `الطلاب مش هيشوفوا الفيديو ده: فشل تحويله لنسخة محمية. ${video_import_error || ''}`.trim()
+    : 'الطلاب هيشوفوا «جارٍ تجهيز الفيديو» لحد ما السيرفر يخلّص تنزيله من درايف وتشفيره. المشغل اللي قدامك هو مشغل جوجل درايف للمعاينة بس.';
   // The protected player plays through the page's service worker, which needs this stream's key to decrypt the chunks.
   const cipher = token ? streamCipherFor(token) : null;
   const protectedStream = token && cipher ? { token, key: cipher.key.toString('hex'), nonce: cipher.nonce.toString('hex') } : null;

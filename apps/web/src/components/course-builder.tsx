@@ -88,7 +88,7 @@ export function CourseBuilder({courseId}:{courseId:string}){
             <span className="builder-tag">{sourceLabel[lesson.video_source]}</span>
             {!lesson.has_video&&<span className="builder-tag is-warn">بدون فيديو</span>}
             {lesson.video_source==='drive'&&lesson.video_import_status!=='failed'&&<span className="builder-tag" title="بيتنزّل من درايف ويتشفّر على السيرفر عشان برامج التحميل متقدرش تلقطه">جارٍ التحويل لنسخة محمية</span>}
-            {lesson.video_source==='drive'&&lesson.video_import_status==='failed'&&<span className="builder-tag is-warn" title={lesson.video_import_error||undefined}>فشل التحويل — الطلاب مش هيشوفوه</span>}
+            {lesson.video_source==='drive'&&lesson.video_import_status==='failed'&&<><span className="builder-tag is-warn" title={lesson.video_import_error||undefined}>فشل التحويل — الطلاب مش هيشوفوه</span>{lesson.video_import_error&&<small className="builder-import-error">{lesson.video_import_error}</small>}</>}
             {Boolean(lesson.is_preview)&&<span className="builder-tag is-free">معاينة مجانية</span>}
             {lesson.attachments_count>0&&<span className="builder-tag">{lesson.attachments_count} مرفق</span>}
           </span>

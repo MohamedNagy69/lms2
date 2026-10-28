@@ -210,6 +210,7 @@ label { color: var(--text-soft); font-weight: 600; }
 .grid { gap: 22px; }
 .notice.error, .error { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger-ink); }
 .notice.success, .success { background: var(--success-bg); border-color: var(--success-line); color: var(--success-ink); }
+.notice.warn { background: var(--warn-bg); color: var(--warn-ink); }
 .empty { color: var(--muted); border-color: var(--line-strong); background: var(--surface); }
 .spinner { border-color: var(--line); border-top-color: var(--accent); }
 .lesson-row { align-items: center; border-color: var(--line); }
@@ -565,6 +566,7 @@ tbody tr:hover td { background: var(--table-hover); }
 .builder-tag { padding: 1px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: .7rem; font-weight: 700; white-space: nowrap; }
 .builder-tag.is-free { background: var(--success-bg); color: var(--success-ink); }
 .builder-tag.is-warn { background: var(--warn-bg); color: var(--warn-ink); }
+.builder-import-error { flex-basis: 100%; color: var(--warn-ink); font-size: .74rem; line-height: 1.5; }
 .builder-add-lesson { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .builder-add-lesson .secondary { padding: 7px 14px; font-size: .84rem; }
 .builder-lesson-form { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--accent-ring); border-radius: 16px; background: var(--surface-2); }
