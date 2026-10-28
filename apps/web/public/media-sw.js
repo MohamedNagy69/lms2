@@ -35,7 +35,8 @@ async function serve(request,url){
   const match=/^bytes=(\d+)-(\d*)$/.exec(request.headers.get('range')||'bytes=0-');
   if(!match)return new Response(null,{status:416});
   const start=Number(match[1]);
-  const upstream=await fetch(`/api/lessons/${lesson}/chunk?token=${encodeURIComponent(token)}`,{
+  // The range also travels in the query string: Hostinger's CDN strips the Range request header.
+  const upstream=await fetch(`/api/lessons/${lesson}/chunk?token=${encodeURIComponent(token)}&start=${start}&end=${match[2]}`,{
     headers:{Range:`bytes=${start}-${match[2]}`,'X-Requested-With':'Mudarris'},
     credentials:'same-origin',cache:'no-store',signal:request.signal,
   });
