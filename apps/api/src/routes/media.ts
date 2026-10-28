@@ -137,8 +137,12 @@ async function authorizeVideoStream(req:Request,res:Response){
   ensure(token.lesson===lesson.id && token.sid===(req.sessionId||'preview') && token.uid===(req.user?.id||null),403,'الرابط غير صالح');
   ensure(token.fp===videoFingerprint(req.get('user-agent')),403,'رابط الفيديو مرتبط بالجهاز الذي فتح الدرس');
   ensure(lesson.video_source==='file' && lesson.video_file,404,'الفيديو غير موجود');
+  // A CDN in front of the app (Hostinger's hcdn) can drop request headers, so a missing Referer is allowed; a
+  // foreign one, or a browser saying the request is cross-site, is still refused. The token stays bound to the
+  // session, user, browser and lesson.
+  ensure(req.headers['sec-fetch-site']!=='cross-site',403,'الدخول المباشر لرابط البث محظور');
   const referer=String(req.headers.referer||'');
-  try{
+  if(referer)try{
     const source=new URL(referer),allowed=new URL(config.origin);
     const localAlias=!config.production && ['localhost','127.0.0.1'].includes(source.hostname) && ['localhost','127.0.0.1'].includes(allowed.hostname) && source.port===allowed.port && source.protocol===allowed.protocol;
     ensure(source.origin===allowed.origin||localAlias,403,'الدخول المباشر لرابط البث محظور');

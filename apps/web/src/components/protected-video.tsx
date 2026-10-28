@@ -79,7 +79,21 @@ export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,u
   useEffect(()=>()=>window.clearTimeout(hideControlsTimer.current),[]);
   const source=String(lesson.video_source),isFile=source==='file',isYouTube=source==='youtube',isDrive=source==='drive';
   const videoId=isYouTube&&embedUrl?new URL(embedUrl).pathname.split('/').filter(Boolean).pop()||'':'';
+  // The <video> element only reports "failed"; ask the chunk endpoint directly so the message says why.
+  const explainFileError=async(stalled=false)=>{
+    let reason='';
+    if(!navigator.serviceWorker?.controller)reason='المشغل المحمي لم يتفعّل في الصفحة. اعمل تحديث للصفحة (Ctrl+Shift+R).';
+    else try{
+      const response=await fetch(`/api/lessons/${lesson.id}/chunk?token=${encodeURIComponent(protectedStream?.token||'')}&start=0&end=15`,{credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'Mudarris'}});
+      if(!response.ok){const body=await response.json().catch(()=>null);reason=`${body?.error||'رد غير متوقع من السيرفر'} (${response.status})`;}
+    }catch{reason='تعذر الاتصال بالسيرفر.';}
+    if(reason||!stalled)setPlayerError(reason||'تعذر تشغيل الملف. أعد فتح الدرس أو راجع صيغة الفيديو.');
+  };
   const fileSource=useProtectedSource(Number(lesson.id),isFile?streamUrl:null,protectedStream,()=>setPlayerError('المتصفح ده مش بيدعم التشغيل المحمي (زي نافذة التصفح الخفي في فايرفوكس). افتح الدرس من Chrome أو Edge في نافذة عادية.'));
+  // A video that keeps loading without ever failing gets the same check after 20 seconds.
+  useEffect(()=>{if(!fileSource)return;const timer=window.setTimeout(()=>{if(!video.current||video.current.readyState<1)void explainFileError(true);},20_000);return()=>window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[fileSource]);
 
   useEffect(()=>{if(!watermark||!user)return;const timer=window.setInterval(()=>setPosition({top:10+Math.random()*58,left:7+Math.random()*62}),5500);return()=>window.clearInterval(timer);},[watermark,user]);
   useEffect(()=>{if(lockUntil<=Date.now())return;const update=()=>{const remaining=Math.max(0,Math.ceil((lockUntil-Date.now())/1000));setLockSeconds(remaining);if(!remaining)window.location.reload();};update();const timer=window.setInterval(update,1000);return()=>window.clearInterval(timer);},[lockUntil]);
@@ -174,7 +188,7 @@ export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,u
         <span className="player-source-badge"><PlayerIcon name="shield"/>محتوى تعليمي محمي</span>
         {loading&&<span className="vp-spinner" role="status" aria-label="جارٍ التحميل"/>}
         {isFile&&streamUrl&&!fileSource&&!blocked&&<p className="player-empty">جارٍ تجهيز المشغل المحمي…</p>}
-        {isFile&&fileSource&&!blocked&&<video ref={video} src={fileSource}controls={false} controlsList="nodownload noremoteplayback" disablePictureInPicture playsInline preload="metadata" onLoadedMetadata={event=>setDuration(event.currentTarget.duration||0)} onTimeUpdate={event=>{setCurrent(event.currentTarget.currentTime);fileBuffered(event.currentTarget);}} onProgress={event=>fileBuffered(event.currentTarget)} onWaiting={()=>setWaiting(true)} onPlaying={()=>setWaiting(false)} onCanPlay={()=>setWaiting(false)} onPlay={()=>{setPlaying(true);revealControls();}} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} onError={()=>setPlayerError('تعذر تشغيل الملف. أعد فتح الدرس أو راجع صيغة الفيديو.')}/>}
+        {isFile&&fileSource&&!blocked&&<video ref={video} src={fileSource}controls={false} controlsList="nodownload noremoteplayback" disablePictureInPicture playsInline preload="metadata" onLoadedMetadata={event=>setDuration(event.currentTarget.duration||0)} onTimeUpdate={event=>{setCurrent(event.currentTarget.currentTime);fileBuffered(event.currentTarget);}} onProgress={event=>fileBuffered(event.currentTarget)} onWaiting={()=>setWaiting(true)} onPlaying={()=>setWaiting(false)} onCanPlay={()=>setWaiting(false)} onPlay={()=>{setPlaying(true);revealControls();}} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} onError={()=>void explainFileError()}/>}
         {isYouTube&&<><div ref={youtubeMount} className="youtube-player-mount" aria-hidden="true"/>
           {/* Transparent layer over the whole player: no click can reach YouTube's title, logo, share or suggested-video links. */}
           <span className="youtube-click-shield" aria-hidden="true" onClick={event=>{event.stopPropagation();toggle();}} onDoubleClick={event=>{event.preventDefault();toggleFullscreen();}}/>
