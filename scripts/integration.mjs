@@ -99,7 +99,11 @@ try{
   const driveLesson=await create('lessons',{title:'درس درايف',lecture_id:lecture,video_source:'drive',drive_url:'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view'});
   const driveView=(await a.request(`/lessons/${driveLesson}`)).body.lesson;assert.equal(driveView.drive_url,'');assert.equal(typeof driveView.video_preparing,'boolean');
   assert.ok((await teacher.request(`/teacher/resources/lessons/${driveLesson}`)).body.drive_url.includes('1AbCdEfGhIjKlMnOpQrStUvWxYz012345'));pass('Drive links are never sent to students; Drive lessons wait for the protected copy');
-  assert.equal((await a.request(videoPath)).status,403);
+  // A CDN in front of the app (Hostinger's hcdn) drops Range and can drop Referer: the range also travels as
+  // ?start=&end=, and a missing Referer is accepted while a foreign one or a cross-site request is refused.
+  const viaQuery=await a.request(`${videoPath}&start=16&end=`,'GET',undefined,{raw:true});assert.equal(viaQuery.status,200);assert.equal(decrypt(viaQuery),'GHIJ');
+  assert.equal((await a.request(videoPath)).status,416);
+  assert.equal((await a.request(videoPath,'GET',undefined,{headers:{'Sec-Fetch-Site':'cross-site',Range:'bytes=0-4'}})).status,403);
   assert.equal((await a.request(videoPath,'GET',undefined,{headers:{Referer:'https://attacker.invalid/'}})).status,403);
   assert.equal((await b.request(videoPath,'GET',undefined,{headers:videoHeaders})).status,403);pass('Video streaming requires the site origin and the signed student session');
   const exam=await create('exams',{title:'اختبار',course_id:course,duration_minutes:10,max_attempts:1,require_fullscreen:false});
