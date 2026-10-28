@@ -46,6 +46,9 @@ function formatTime(value:number){if(!Number.isFinite(value)||value<0)return '00
 function formatLockTime(value:number){const seconds=Math.max(0,Math.floor(value));return `${String(Math.floor(seconds/3600)).padStart(2,'0')}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;}
 
 type ProtectedStream={token:string;key:string;nonce:string};
+// Bump the version whenever media-sw.js changes: a new script URL makes every browser (and Hostinger's CDN, which can
+// keep serving an old copy) install the new worker instead of the one it already has.
+const MEDIA_WORKER='/media-sw.js?v=2';
 // Uploaded videos play through /media-sw.js, which fetches encrypted chunks and decrypts them in the browser, so
 // download managers (IDM and the like) never see a video file on the network. There is no plain-stream fallback:
 // a browser without service workers (for example a Firefox private window) gets a message instead.
@@ -59,7 +62,7 @@ function useProtectedSource(lessonId:number,streamUrl:string|null,stream:Protect
     let cancelled=false;
     const virtual=`/protected-media/${lessonId}?token=${encodeURIComponent(stream.token)}&k=${stream.key}&n=${stream.nonce}`;
     const controlled=()=>new Promise<void>(resolve=>{if(navigator.serviceWorker.controller){resolve();return;}navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(),{once:true});});
-    navigator.serviceWorker.register('/media-sw.js',{scope:'/'}).then(()=>navigator.serviceWorker.ready).then(registration=>{if(!navigator.serviceWorker.controller)registration.active?.postMessage('claim');}).then(controlled)
+    navigator.serviceWorker.register(MEDIA_WORKER,{scope:'/'}).then(()=>navigator.serviceWorker.ready).then(registration=>{if(!navigator.serviceWorker.controller)registration.active?.postMessage('claim');}).then(controlled)
       .then(()=>{if(!cancelled)setSource(virtual);},()=>{if(!cancelled)onUnsupported();});
     return()=>{cancelled=true;};
   },[lessonId,streamUrl,stream?.token,stream?.key,stream?.nonce]);
@@ -87,9 +90,16 @@ export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,u
       const response=await fetch(`/api/lessons/${lesson.id}/chunk?token=${encodeURIComponent(protectedStream?.token||'')}&start=0&end=15`,{credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'Mudarris'}});
       if(!response.ok){const body=await response.json().catch(()=>null);reason=`${body?.error||'رد غير متوقع من السيرفر'} (${response.status})`;}
     }catch{reason='تعذر الاتصال بالسيرفر.';}
-    if(reason||!stalled)setPlayerError(reason||'تعذر تشغيل الملف. أعد فتح الدرس أو راجع صيغة الفيديو.');
+    if(reason||!stalled)setPlayerError(previous=>previous||reason||'تعذر تشغيل الملف. أعد فتح الدرس أو راجع صيغة الفيديو.');
   };
   const fileSource=useProtectedSource(Number(lesson.id),isFile?streamUrl:null,protectedStream,()=>setPlayerError('المتصفح ده مش بيدعم التشغيل المحمي (زي نافذة التصفح الخفي في فايرفوكس). افتح الدرس من Chrome أو Edge في نافذة عادية.'));
+  // The worker reports why a chunk failed or timed out, which the <video> element itself never says.
+  useEffect(()=>{
+    if(!isFile||!('serviceWorker' in navigator))return;
+    const failed=(event:MessageEvent)=>{if(event.data?.type==='protected-media-error')setPlayerError(`${event.data.error} (${event.data.status})`);};
+    navigator.serviceWorker.addEventListener('message',failed);
+    return()=>navigator.serviceWorker.removeEventListener('message',failed);
+  },[isFile]);
   // A video that keeps loading without ever failing gets the same check after 20 seconds.
   useEffect(()=>{if(!fileSource)return;const timer=window.setTimeout(()=>{if(!video.current||video.current.readyState<1)void explainFileError(true);},20_000);return()=>window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
