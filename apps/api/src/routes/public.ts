@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { rateLimit } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { db } from '../db/index.js';
 import { config } from '../config.js';
 import { canAccess, courseBySlug, courseSelect } from '../lib/catalog.js';
@@ -35,7 +35,8 @@ publicRoutes.get('/courses/:slug', async (req, res) => {
   const { master_access_code, ...safe } = course;
   res.json({ course: safe, lectures: lectures.map(l => ({ ...l, lessons: lessons.filter(s => s.lecture_id === l.id) })), exams, allowed, enrollment });
 });
-publicRoutes.post('/contact', rateLimit({ windowMs: 3600000, limit: 10, message: { error: 'حاول مرة أخرى لاحقًا' } }), async (req, res) => {
+// Keyed by phone as well as address: behind Hostinger's CDN visitors can share one edge address.
+publicRoutes.post('/contact', rateLimit({ windowMs: 3600000, limit: 10, keyGenerator: req => `${ipKeyGenerator(req.ip || '')}|${String(req.body?.phone || '').trim().slice(0, 20)}`, message: { error: 'حاول مرة أخرى لاحقًا' } }), async (req, res) => {
   const data = z.object({ name: z.string().trim().min(2).max(80), phone: z.string().trim().min(8).max(20), message: z.string().trim().min(5).max(5000) }).parse(req.body);
   await db.run('INSERT INTO contact_messages SET ?', [data]); res.status(201).json({ message: 'تم إرسال رسالتك بنجاح' });
 });

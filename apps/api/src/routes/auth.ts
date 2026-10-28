@@ -1,6 +1,6 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
-import { rateLimit } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { db,transaction } from '../db/index.js';
 import { config } from '../config.js';
@@ -9,7 +9,16 @@ import { ensure } from '../lib/errors.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 
 export const auth = Router();
-const limit = rateLimit({ windowMs: 15 * 60_000, limit: 30, message: { error: 'محاولات كثيرة. حاول بعد قليل.' }, standardHeaders: 'draft-8', legacyHeaders: false });
+// Keyed by account as well as address: behind Hostinger's CDN many students can reach the app from the same edge
+// address, and an address-only key would lock all of them out together.
+const limitKey = (req: Request) => {
+  const who = req.user ? `u${req.user.id}` : String(req.body?.username || req.body?.contact || req.body?.phone || '').trim().toLowerCase().slice(0, 254);
+  return `${ipKeyGenerator(req.ip || '')}|${who}`;
+};
+const accountLimit = rateLimit({ windowMs: 15 * 60_000, limit: 30, keyGenerator: limitKey, message: { error: 'محاولات كثيرة. حاول بعد قليل.' }, standardHeaders: 'draft-8', legacyHeaders: false });
+// A looser per-address ceiling still stops one source from trying many different accounts.
+const addressLimit = rateLimit({ windowMs: 15 * 60_000, limit: 600, message: { error: 'محاولات كثيرة. حاول بعد قليل.' }, standardHeaders: false, legacyHeaders: false });
+const limit = [addressLimit, accountLimit];
 const text = (max: number) => z.string().trim().max(max).default('');
 const profile = z.object({ first_name: text(150), last_name: text(150), email: z.union([z.email(), z.literal('')]).default(''),
   phone: text(20), parent_phone: text(20), mother_phone: text(20), father_email: text(254), mother_email: text(254),
@@ -23,7 +32,7 @@ auth.get('/security-lock', async (req, res) => {
 auth.get('/devices', authenticated, async (req, res) => {
   res.json(await db.rows('SELECT id,device_name,ip_address,last_login,is_active FROM student_devices WHERE student_id=? ORDER BY is_active DESC,last_login DESC', [req.user!.id]));
 });
-auth.get('/telegram-links', authenticated, limit, async (req, res) => {
+auth.get('/telegram-links', authenticated, ...limit, async (req, res) => {
   ensure(req.user!.role === 'student', 403, 'روابط الربط للطلاب فقط');
   const bot = config.site.telegram_bot_username.replace(/^@/, '');
   ensure(/^[A-Za-z0-9_]{5,32}$/.test(bot), 503, 'ربط تيليجرام غير متاح حاليًا');
@@ -37,7 +46,7 @@ auth.get('/telegram-links', authenticated, limit, async (req, res) => {
   }
   res.json({ links, expires_in_seconds: 900 });
 });
-auth.post('/login', limit, async (req, res) => {
+auth.post('/login', ...limit, async (req, res) => {
   const data = z.object({ username: z.string().min(1).max(150), password: z.string().min(1).max(200) }).parse(req.body);
   ensure(!await captureLockRemaining(req), 423, 'هذا الجهاز مقفول بسبب محاولة تصوير أو تسجيل الشاشة. انتظر انتهاء العداد.');
   const users = await db.rows('SELECT * FROM users WHERE username=? OR (phone=? AND phone<>\'\') ORDER BY (username=?) DESC LIMIT 2', [data.username, data.username, data.username]);
@@ -56,7 +65,7 @@ auth.post('/login', limit, async (req, res) => {
   }
   await createSession(req, res, user); res.json({ user: publicUser(user) });
 });
-auth.post('/register', limit, async (req, res) => {
+auth.post('/register', ...limit, async (req, res) => {
   const data = profile.extend({ username: z.string().trim().min(3).max(150).regex(/^[\p{L}\p{N}_.@+-]+$/u), password: z.string().min(8).max(200), first_name: z.string().trim().min(1).max(150), phone: z.string().trim().min(8).max(20) }).parse(req.body);
   const { password, ...fields } = data;
   ensure(!await captureLockRemaining(req), 423, 'هذا الجهاز مقفول بسبب محاولة تصوير أو تسجيل الشاشة. انتظر انتهاء العداد.');
@@ -69,7 +78,7 @@ auth.post('/logout', async (req, res) => {
   if (req.sessionId) await db.run('UPDATE student_devices SET is_active=0,session_key=\'\' WHERE session_key=?', [req.sessionId]);
   res.clearCookie('session', { path: '/' }); res.json({ ok: true });
 });
-auth.post('/password-reset', limit, async (req,res) => {
+auth.post('/password-reset', ...limit, async (req,res) => {
   // The student identifies the account by the phone number or the email saved on it. A request is only opened when
   // exactly one student matches; the teacher still verifies the student before changing the password.
   const {contact}=z.object({contact:z.string().trim().min(3).max(254)}).parse(req.body);
@@ -100,7 +109,7 @@ auth.patch('/profile', authenticated, async (req, res) => {
   await db.run('UPDATE users SET ? WHERE id=?', [data, req.user!.id]);
   res.json({ user: publicUser((await db.one('SELECT * FROM users WHERE id=?', [req.user!.id]))!) });
 });
-auth.post('/password', authenticated, limit, async (req, res) => {
+auth.post('/password', authenticated, ...limit, async (req, res) => {
   const data = z.object({ current_password: z.string().max(200), password: z.string().min(8).max(200) }).parse(req.body);
   ensure(await verifyPassword(data.current_password, req.user!.password), 400, 'كلمة المرور الحالية غير صحيحة');
   const newHash=await hashPassword(data.password);
