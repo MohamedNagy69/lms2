@@ -164,8 +164,8 @@ media.get('/lessons/:id/chunk',async(req,res)=>{
   const header=await encryptedVideoHeader(absolute);
   ensure(header&&stat.size>=videoHeaderSize,503,'الفيديو يحتاج تهيئة التشفير قبل تشغيله');
   const size=stat.size-videoHeaderSize;
-  // The worker sends the range as ?start=&end= too: Hostinger's CDN drops the Range request header before it
-  // reaches the app, which rejected every chunk there. The header is still accepted for older cached workers.
+  // The worker sends the range as ?start=&end=: Hostinger's CDN removes the Range request header before it reaches
+  // the app, then applies it to the app's answer. The header is still accepted for direct local requests.
   const queryRange=typeof req.query.start==='string'?`bytes=${req.query.start}-${typeof req.query.end==='string'?req.query.end:''}`:'';
   const match=/^bytes=(\d+)-(\d*)$/.exec(queryRange||String(req.headers.range||''));
   ensure(match,416,'طلب نطاق البث مطلوب');

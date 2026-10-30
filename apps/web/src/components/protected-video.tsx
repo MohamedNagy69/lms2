@@ -253,7 +253,11 @@ export function VideoDiagnostics({lessonId}:{lessonId:number}){
       const viaWorker=await fetch(`/protected-media/${lessonId}?token=${encodeURIComponent(stream.token)}&k=${stream.key}&n=${stream.nonce}`,{headers:{Range:'bytes=0-15'},cache:'no-store'});
       const head=new Uint8Array(await viaWorker.arrayBuffer().catch(()=>new ArrayBuffer(0)));
       const mp4=String.fromCharCode(...head.subarray(4,8))==='ftyp';
-      add('فك التشفير في المتصفح',viaWorker.status===206&&mp4,viaWorker.status===206?(mp4?'الفيديو بيتفك صح وجاهز للتشغيل':'البيانات اتفكت بس مش فيديو MP4 سليم'):`المشغل المحمي رد بـ HTTP ${viaWorker.status}`);
+      add('فك التشفير في المتصفح',viaWorker.status===206&&mp4,viaWorker.status===206?(mp4?'الفيديو بيتفك صح':'البيانات اتفكت بس مش فيديو MP4 سليم'):`المشغل المحمي رد بـ HTTP ${viaWorker.status}`);
+      // A chunk past the first: this is the request a CDN that rewrites Range answers with its own 416.
+      const middle=Math.floor(total/2),later=await fetch(`/protected-media/${lessonId}?token=${encodeURIComponent(stream.token)}&k=${stream.key}&n=${stream.nonce}`,{headers:{Range:`bytes=${middle}-`},cache:'no-store'});
+      await later.arrayBuffer().catch(()=>null);
+      add('تحميل نص الفيديو',later.status===206,later.status===206?'الأجزاء التانية بتوصل':`المشغل المحمي رد بـ HTTP ${later.status}`);
     }catch(error){add('الاتصال',false,error instanceof Error?error.message:'خطأ غير معروف');}
     finally{setRunning(false);}
   }
