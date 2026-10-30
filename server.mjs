@@ -41,12 +41,8 @@ const web=next({dev:false,dir:path.join(root,'apps/web')});
 await web.prepare();
 const handle=web.getRequestHandler();
 
-// The API only accepts its configured origin, so on www.<domain> the site opened but sign-in, saving and video were
-// refused. 308 keeps the method and body of any request already on its way.
-let canonical=null;try{canonical=new URL(process.env.WEB_ORIGIN||'');}catch{}
 const server=http.createServer((req,res)=>{
   const url=req.url||'/';
-  if(canonical&&String(req.headers.host||'').toLowerCase()===`www.${canonical.host}`){res.writeHead(308,{Location:canonical.origin+url});res.end();return;}
   if(url==='/api'||url.startsWith('/api/')||url.startsWith('/api?'))apiApp(req,res);
   else handle(req,res);
 });
