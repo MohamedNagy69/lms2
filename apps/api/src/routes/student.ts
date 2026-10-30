@@ -91,12 +91,13 @@ student.post('/courses/:slug/enroll', enrollmentLimit, async (req, res) => {
   const { code } = z.object({ code: z.string().trim().max(50).default('') }).parse(req.body);
   const status = await transaction(async tx => {
     await tx.one('SELECT id FROM users WHERE id=? FOR UPDATE', [req.user!.id]);
-    const currentCourse=await tx.one('SELECT is_free,price,master_access_code,is_published FROM courses WHERE id=? FOR UPDATE',[course.id]);
+    const currentCourse=await tx.one('SELECT is_free,master_access_code,is_published FROM courses WHERE id=? FOR UPDATE',[course.id]);
     ensure(currentCourse&&(currentCourse.is_published||isTeacher(req.user)),404,'الكورس غير موجود');
     const enrollment = await tx.one('SELECT * FROM enrollments WHERE student_id=? AND course_id=?', [req.user!.id, course.id]);
     if (enrollment?.status === 'active') return 'active';
-    let active = currentCourse.is_free || Number(currentCourse.price) === 0;
-    if (code && !active) {
+    let active = Boolean(currentCourse.is_free);
+    ensure(active || code, 400, 'اكتب كود التفعيل');
+    if (!active) {
       if (currentCourse.master_access_code && code === currentCourse.master_access_code) active = true;
       else {
         const access = await tx.one('SELECT * FROM access_codes WHERE code=? FOR UPDATE', [code.toUpperCase()]);
@@ -122,7 +123,7 @@ student.get('/exams', async (req, res) => {
     (SELECT COUNT(*) FROM exam_attempts a WHERE a.exam_id=e.id AND a.student_id=? AND a.submitted_at IS NOT NULL) AS completed_count,
     (SELECT MAX(a.id) FROM exam_attempts a WHERE a.exam_id=e.id AND a.student_id=?) AS last_attempt_id
     FROM exams e JOIN courses c ON c.id=e.course_id WHERE e.is_published=1 AND c.is_published=1 AND
-    (c.is_free=1 OR c.price=0 OR ?=1 OR EXISTS(SELECT 1 FROM enrollments en WHERE en.course_id=c.id AND en.student_id=? AND en.status='active')) ORDER BY e.created_at DESC`, [req.user!.id, req.user!.id, isTeacher(req.user), req.user!.id]));
+    (c.is_free=1 OR ?=1 OR EXISTS(SELECT 1 FROM enrollments en WHERE en.course_id=c.id AND en.student_id=? AND en.status='active')) ORDER BY e.created_at DESC`, [req.user!.id, req.user!.id, isTeacher(req.user), req.user!.id]));
 });
 student.post('/exams/:id/start', async (req, res) => res.json({ id: await startExam(id(req.params.id), req.user!) }));
 student.get('/attempts/:id', async (req, res) => {

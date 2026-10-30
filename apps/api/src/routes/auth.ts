@@ -4,7 +4,7 @@ import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { db,transaction } from '../db/index.js';
 import { config } from '../config.js';
-import { authenticated, captureLockMinutes, captureLockRemaining, createSession, publicUser } from '../lib/auth.js';
+import { authenticated, captureLockMinutes, captureLockRemaining, createSession, isTeacher, publicUser } from '../lib/auth.js';
 import { ensure } from '../lib/errors.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 
@@ -25,7 +25,7 @@ const profile = z.object({ first_name: text(150), last_name: text(150), email: z
   city: text(60), bio: text(2000), grade_id: z.number().int().positive().nullable().default(null) });
 auth.get('/me', (req, res) => res.json({ user: req.user ? publicUser(req.user) : null }));
 auth.get('/security-lock', async (req, res) => {
-  const remaining = await captureLockRemaining(req);
+  const remaining = isTeacher(req.user) ? 0 : await captureLockRemaining(req);
   if (!remaining && req.cookies?.capture_lock) res.clearCookie('capture_lock', { path: '/' });
   res.json({ remaining_seconds: remaining, duration_seconds: (await captureLockMinutes()) * 60 });
 });
@@ -48,11 +48,13 @@ auth.get('/telegram-links', authenticated, ...limit, async (req, res) => {
 });
 auth.post('/login', ...limit, async (req, res) => {
   const data = z.object({ username: z.string().min(1).max(150), password: z.string().min(1).max(200) }).parse(req.body);
-  ensure(!await captureLockRemaining(req), 423, 'هذا الجهاز مقفول بسبب محاولة تصوير أو تسجيل الشاشة. انتظر انتهاء العداد.');
   const users = await db.rows('SELECT * FROM users WHERE username=? OR (phone=? AND phone<>\'\') ORDER BY (username=?) DESC LIMIT 2', [data.username, data.username, data.username]);
   const user = users[0];
   ensure(user && await verifyPassword(data.password, user.password), 401, 'بيانات الدخول غير صحيحة');
   ensure(user.username===data.username||users.length===1,401,'استخدم اسم المستخدم لتحديد الحساب');
+  // The teacher is the one who lifts locks, so a device lock must never keep the teacher out; it ends on this device.
+  if (isTeacher(user)) res.clearCookie('capture_lock', { path: '/' });
+  else ensure(!await captureLockRemaining(req), 423, 'هذا الجهاز مقفول بسبب محاولة تصوير أو تسجيل الشاشة. انتظر انتهاء العداد.');
   if(user.is_security_banned&&user.banned_until&&new Date(user.banned_until).getTime()<=Date.now()){
     await db.run('UPDATE users SET is_security_banned=0,banned_until=NULL WHERE id=?',[user.id]);user.is_security_banned=0;
   }

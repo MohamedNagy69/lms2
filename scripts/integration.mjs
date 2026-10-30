@@ -49,7 +49,7 @@ try{
   const grade=await create('grades',{name:'الصف التجريبي'});
   const privateAnnouncement=await create('announcements',{title:'إعلان خاص بالصف',body:'للطلاب في هذا الصف فقط',grade_id:grade});
   assert(!(await anon.request('/home')).body.announcements.some(item=>item.id===privateAnnouncement));pass('Grade announcements are not exposed to anonymous visitors');
-  const course=await create('courses',{title:'الكورس التجريبي',grade_id:grade,price:100,master_access_code:'DO-NOT-LEAK'});
+  const course=await create('courses',{title:'الكورس التجريبي',grade_id:grade,master_access_code:'DO-NOT-LEAK'});
   const courseRecord=(await teacher.request(`/teacher/resources/courses/${course}`)).body;
   const lecture=await create('lectures',{title:'المحاضرة',course_id:course});
   const lesson=await create('lessons',{title:'الدرس المحمي',lecture_id:lecture,youtube_id:'dQw4w9WgXcQ'});
@@ -59,6 +59,9 @@ try{
   assert.equal((await anon.request(`/lessons/${preview}`)).body.lesson.demo_video,true);pass('Seed demonstration videos are clearly identified to viewers');
   const publicCourse=(await anon.request(`/courses/${courseRecord.slug}`)).body;assert.equal(publicCourse.course.master_access_code,undefined);assert.equal(publicCourse.lectures[0].lessons[0].youtube_id,undefined);pass('Paid lessons and access codes remain private; previews work');
   const masterUser=client();const masterAccount=await masterUser.request('/auth/register','POST',{username:'master_student',password,first_name:'طالب',phone:'01098765431'});assert.equal(masterAccount.status,201);
+  // Joining takes a code: there is no pending request without one, and no price makes a course open.
+  assert.equal((await masterUser.request(`/courses/${courseRecord.slug}/enroll`,'POST',{})).status,400);
+  assert.equal((await masterUser.request(`/courses/${courseRecord.slug}/enroll`,'POST',{code:'WRONG-CODE'})).status,400);
   const masterEnrollment=await masterUser.request(`/courses/${courseRecord.slug}/enroll`,'POST',{code:'DO-NOT-LEAK'});
   assert.equal(masterEnrollment.status,200);assert.equal(masterEnrollment.body.status,'active');
   assert.equal((await masterUser.request(`/lessons/${lesson}`)).status,200);pass('Private master access code activates the course without leaking it publicly');
@@ -156,6 +159,10 @@ try{
   assert(strikes[0].screenshot_strikes>=1);assert.equal(strikes[0].is_security_banned,1);assert(strikes[0].locked_until);
   assert.equal((await devices[2].request('/auth/me')).body.user,null);assert.equal((await devices[1].request('/auth/me')).body.user,null);
   assert.equal((await devices[2].request('/auth/login','POST',{username:'legacy',password})).status,423);
+  const lockedGuest=client();assert.equal((await lockedGuest.request('/security/record-violation','POST',{type:'screenshot'})).body.status,'locked');
+  assert.equal((await lockedGuest.request('/auth/login','POST',{username:'legacy',password:'wrong-password'})).status,401);
+  assert.equal((await lockedGuest.request('/auth/login','POST',{username:'instructor',password})).status,200);
+  assert.equal((await lockedGuest.request('/auth/security-lock')).body.remaining_seconds,0);pass('A device lock never keeps the teacher out, and the teacher signing in ends it');
   assert.equal((await client().request('/auth/login','POST',{username:'legacy',password})).status,403);
   assert.equal((await teacher.request('/teacher/students/2/unban','POST',{})).status,200);
   assert.equal((await devices[2].request('/auth/security-lock')).body.remaining_seconds,0);

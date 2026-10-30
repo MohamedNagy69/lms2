@@ -43,7 +43,7 @@ export function ResourceList({resource,filter}:{resource:string;filter?:string})
   // Selection only covers rows on screen: a new search or page starts empty so hidden rows are never deleted.
   useEffect(()=>setSelected([]),[resource,params,q,page]);
   if(meta.loading||meta.error)return <Status {...meta} retry={meta.reload}/>;if(!definition)return <Empty>القسم غير موجود</Empty>;
-  const fields=definition.fields.filter((f:Row)=>['title','name','text','student_name','price','is_published','is_active','is_correct','question_type','is_visible','is_pinned'].includes(f.key)).slice(0,4);
+  const fields=definition.fields.filter((f:Row)=>['title','name','text','student_name','is_published','is_active','is_correct','question_type','is_visible','is_pinned'].includes(f.key)).slice(0,4);
   const items:Row[]=query.data?.items||[],labelOf=(item:Row)=>String(item.title||item.name||item.text||item.student_name||`#${item.id}`).slice(0,60);
   const allSelected=items.length>0&&items.every(item=>selected.includes(item.id));
   const toggle=(itemId:number)=>setSelected(s=>s.includes(itemId)?s.filter(x=>x!==itemId):[...s,itemId]);

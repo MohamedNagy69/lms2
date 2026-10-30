@@ -306,14 +306,6 @@ tbody tr:hover td { background: var(--table-hover); }
 .mentor-caption small, .mentor-caption > span { color: #cfe0f5; font-size: .8rem; }
 .orbit { position: absolute; inset: 5px 12px 19px; border: 1px solid var(--accent-ring); border-radius: 50%; transform: rotate(-23deg); pointer-events: none; opacity: .7; }
 .orbit-two { inset: 35px 0 40px; transform: rotate(23deg); border-style: dashed; opacity: .45; }
-.floating-note { position: absolute; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
-.floating-note strong { display: block; font-size: .84rem; color: var(--heading); }
-.floating-note small { color: var(--muted); font-size: .7rem; }
-.note-top { top: 18%; right: 0; transform: rotate(3deg); }
-.note-bottom { bottom: 4%; left: 0; transform: rotate(-3deg); background: var(--sky); color: var(--indigo); border-color: transparent; }
-.note-bottom strong { color: var(--indigo); }
-.note-bottom small { color: #1f3d63; }
-.note-icon { display: grid; place-items: center; width: 38px; height: 40px; color: #fff; background: var(--yale); border-radius: 11px; }
 .mentor-spark { position: absolute; top: -6px; left: 13%; color: var(--sky); font-size: 3.4rem; }
 
 .brand-promise { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); align-items: center; gap: 32px; margin: 8px 0 18px; padding: 40px 46px; border: 0; border-radius: 28px; color: #fff; position: relative; overflow: hidden; isolation: isolate;
@@ -347,7 +339,6 @@ tbody tr:hover td { background: var(--table-hover); }
 .course-card:hover .course-cover img { transform: scale(1.05); }
 .course-meta span { display: inline-flex; align-items: center; gap: 6px; }
 .course-meta svg { width: 16px; height: 16px; color: var(--accent); }
-.course-price { padding: 2px 12px; border-radius: 999px; background: var(--accent-soft); }
 .course-cta { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); color: var(--accent); font-size: .84rem; font-weight: 700; transition: background .2s, color .2s; }
 .course-cta svg { width: 17px; transition: transform .2s; }
 .course-card:hover .course-cta { background: var(--btn-bg); color: var(--btn-ink); }
@@ -696,8 +687,6 @@ tbody tr:hover td { background: var(--table-hover); }
   .mentor-photo { aspect-ratio: 1; border-radius: 100px 100px 26px 26px; }
   .mentor-caption { bottom: 20px; }
   .mentor-caption strong { font-size: 1.25rem; }
-  /* The floating notes cover too much of the photo on a phone. */
-  .floating-note { display: none; }
   .mentor-spark { font-size: 2.4rem; top: -14px; }
   .brand-promise { grid-template-columns: 1fr; padding: 26px; gap: 20px; border-radius: 22px; }
   .brand-promise h2 { font-size: 1.55rem; }
