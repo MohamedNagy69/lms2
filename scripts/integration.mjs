@@ -99,6 +99,13 @@ try{
   const driveLesson=await create('lessons',{title:'درس درايف',lecture_id:lecture,video_source:'drive',drive_url:'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view'});
   const driveView=(await a.request(`/lessons/${driveLesson}`)).body.lesson;assert.equal(driveView.drive_url,'');assert.equal(typeof driveView.video_preparing,'boolean');
   assert.ok((await teacher.request(`/teacher/resources/lessons/${driveLesson}`)).body.drive_url.includes('1AbCdEfGhIjKlMnOpQrStUvWxYz012345'));pass('Drive links are never sent to students; Drive lessons wait for the protected copy');
+  const lessonRow=async(title,file)=>(await connection.query("INSERT INTO lessons(lecture_id,title,description,video_source,video_file,youtube_id,drive_url,duration_minutes,`order`,is_preview,enable_watermark) VALUES (?,?,'','file',?,'','',0,50,0,1)",[lecture,title,file]))[0].insertId;
+  const noVideo=await lessonRow('بدون فيديو',null);
+  assert.equal((await teacher.request(`/teacher/resources/lessons/${noVideo}`,'PATCH',{title:'اسم جديد'})).status,200);
+  assert.equal((await teacher.request(`/teacher/resources/lessons/${noVideo}`,'PATCH',{video_source:'file',video_file:'',drive_url:'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view'})).status,200);
+  assert.equal((await teacher.request(`/teacher/resources/lessons/${noVideo}`)).body.video_source,'drive');
+  const withVideo=await lessonRow('بفيديو','videos/kept.mp4');
+  assert.equal((await teacher.request(`/teacher/resources/lessons/${withVideo}`,'PATCH',{video_file:''})).status,400);pass('Lessons without a video stay editable, a pasted link is used, and an existing file cannot be removed without a replacement');
   // A CDN in front of the app (Hostinger's hcdn) drops Range and can drop Referer: the range also travels as
   // ?start=&end=, and a missing Referer is accepted while a foreign one or a cross-site request is refused.
   const viaQuery=await a.request(`${videoPath}&start=16&end=`,'GET',undefined,{raw:true});assert.equal(viaQuery.status,200);assert.equal(decrypt(viaQuery),'GHIJ');

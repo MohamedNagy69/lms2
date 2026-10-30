@@ -6,9 +6,24 @@ export class ApiError extends Error{constructor(message:string,public status:num
 export async function api<T=any>(path:string,options:RequestInit={}):Promise<T>{
   const form=options.body instanceof FormData;
   const response=await fetch(`/api${path}`,{...options,credentials:'include',headers:{...(form?{}:{'Content-Type':'application/json'}),'X-Requested-With':'Mudarris',...options.headers}});
-  const body=await response.json().catch(()=>({error:'تعذر الاتصال بالخادم'}));
+  // A non-JSON answer comes from something in front of the app (the host's CDN or proxy); its status says what.
+  const body=await response.json().catch(()=>({error:`تعذر الاتصال بالخادم (HTTP ${response.status})`}));
   if(!response.ok)throw new ApiError(body.details?.length?`${body.error}: ${body.details.map((d:any)=>d.field).join('، ')}`:body.error||'حدث خطأ',response.status);
   return body;
+}
+// fetch() cannot report upload progress, and a lesson video can take ten minutes to reach the host.
+export function uploadFile<T=any>(path:string,body:FormData,onProgress:(percent:number)=>void):Promise<T>{
+  return new Promise((resolve,reject)=>{
+    const request=new XMLHttpRequest();
+    request.open('POST',`/api${path}`);request.withCredentials=true;request.setRequestHeader('X-Requested-With','Mudarris');
+    request.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(99,Math.round(event.loaded/event.total*100)));};
+    request.onload=()=>{
+      let data:any;try{data=JSON.parse(request.responseText);}catch{data={error:`تعذر رفع الملف (HTTP ${request.status})`};}
+      if(request.status>=200&&request.status<300){onProgress(100);resolve(data);}else reject(new ApiError(data.error||'حدث خطأ',request.status));
+    };
+    request.onerror=()=>reject(new ApiError('انقطع الاتصال أثناء رفع الملف. تأكد من الإنترنت وجرّب تاني.',0));
+    request.send(body);
+  });
 }
 export const post=(path:string,body:unknown={})=>api(path,{method:'POST',body:JSON.stringify(body)});
 export function useData<T=any>(path:string|null){

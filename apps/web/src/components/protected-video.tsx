@@ -227,3 +227,39 @@ export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,u
     </>}
   </div></>;
 }
+
+// Teacher-only check of every step an uploaded video goes through, run from the teacher's own browser, so a failure
+// on the host (CDN, proxy, missing file) is named instead of guessed.
+type Check={step:string;ok:boolean;detail:string};
+export function VideoDiagnostics({lessonId}:{lessonId:number}){
+  const [checks,setChecks]=useState<Check[]|null>(null),[running,setRunning]=useState(false);
+  async function run(){
+    setRunning(true);const out:Check[]=[];const add=(step:string,ok:boolean,detail:string)=>{out.push({step,ok,detail});setChecks([...out]);};
+    try{
+      const sw='serviceWorker' in navigator;
+      add('المتصفح بيدعم التشغيل المحمي',sw,sw?(navigator.serviceWorker.controller?'المشغل المحمي شغال في الصفحة':'المشغل المحمي مش متفعّل لسه: اعمل Ctrl+Shift+R'):'افتح من Chrome أو Edge في نافذة عادية');
+      const lessonResponse=await fetch(`/api/lessons/${lessonId}`,{credentials:'same-origin',cache:'no-store'});
+      const data=await lessonResponse.json().catch(()=>null);
+      add('بيانات الدرس من السيرفر',lessonResponse.ok,lessonResponse.ok?`مصدر الفيديو: ${data?.lesson?.video_source||'؟'}`:`${data?.error||'رد غير متوقع'} (HTTP ${lessonResponse.status})`);
+      if(!lessonResponse.ok)return;
+      const stream=data.protected_stream as ProtectedStream|null;
+      add('ملف فيديو مربوط بالدرس',Boolean(stream),stream?'موجود':data.lesson.video_source==='drive'?'الدرس لسه على رابط درايف ومتحوّلش لنسخة محمية':'الدرس مالوش ملف فيديو، ارفعه من تعديل الدرس');
+      if(!stream)return;
+      const chunk=await fetch(`/api/lessons/${lessonId}/chunk?token=${encodeURIComponent(stream.token)}&start=0&end=15`,{credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'Mudarris'}});
+      const chunkError=chunk.ok?null:await chunk.json().catch(()=>null);
+      const total=Number(chunk.headers.get('X-Total-Size'));
+      add('السيرفر بيبعت أجزاء الفيديو',chunk.ok&&total>0,chunk.ok?(total>0?`حجم الفيديو ${(total/1048576).toFixed(0)} MB`:'الرد وصل من غير بيانات الحجم (X-Total-Size)، غالبًا الـ CDN شالها'):`${chunkError?.error||'رد غير متوقع من السيرفر أو الـ CDN'} (HTTP ${chunk.status})`);
+      if(!chunk.ok||!sw||!navigator.serviceWorker.controller)return;
+      const viaWorker=await fetch(`/protected-media/${lessonId}?token=${encodeURIComponent(stream.token)}&k=${stream.key}&n=${stream.nonce}`,{headers:{Range:'bytes=0-15'},cache:'no-store'});
+      const head=new Uint8Array(await viaWorker.arrayBuffer().catch(()=>new ArrayBuffer(0)));
+      const mp4=String.fromCharCode(...head.subarray(4,8))==='ftyp';
+      add('فك التشفير في المتصفح',viaWorker.status===206&&mp4,viaWorker.status===206?(mp4?'الفيديو بيتفك صح وجاهز للتشغيل':'البيانات اتفكت بس مش فيديو MP4 سليم'):`المشغل المحمي رد بـ HTTP ${viaWorker.status}`);
+    }catch(error){add('الاتصال',false,error instanceof Error?error.message:'خطأ غير معروف');}
+    finally{setRunning(false);}
+  }
+  return <section className="panel video-diagnostics">
+    <div className="row between"><h3>فحص تشغيل الفيديو</h3><button type="button" className="secondary" disabled={running} onClick={()=>void run()}>{running?'جارٍ الفحص…':'ابدأ الفحص'}</button></div>
+    {checks&&<ol>{checks.map(check=><li key={check.step} className={check.ok?'ok':'fail'}><b>{check.ok?'✓':'✗'} {check.step}</b><span>{check.detail}</span></li>)}</ol>}
+    {checks&&!running&&<p className="muted">لو فيه خطوة عليها ✗ صوّر النتيجة دي وابعتها.</p>}
+  </section>;
+}

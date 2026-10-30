@@ -57,6 +57,8 @@ app.use((_req,res)=>res.status(404).json({error:'المسار غير موجود'
 app.use(errorHandler);
 // API_EMBEDDED: server.mjs mounts `app` on the same HTTP server as Next (single-process hosts such as Hostinger).
 const server=process.env.API_EMBEDDED==='1'?null:app.listen(config.port,'127.0.0.1',()=>console.log(`API listening on http://127.0.0.1:${config.port}`));
+// Large video uploads outlast Node's default 5-minute request limit on slow connections (server.mjs does the same).
+if(server)server.requestTimeout=60*60_000;
 startNotificationWorker();
 startTelegramPoller();
 void resumeDriveImports().catch(error=>console.error('Drive video conversion could not resume:',error));

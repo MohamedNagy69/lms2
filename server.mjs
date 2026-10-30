@@ -46,5 +46,8 @@ const server=http.createServer((req,res)=>{
   if(url==='/api'||url.startsWith('/api/')||url.startsWith('/api?'))apiApp(req,res);
   else handle(req,res);
 });
+// Node ends any request after 5 minutes by default (requestTimeout). A 150-200 MB lesson video takes longer than
+// that to upload over a home connection to the host, so uploads were cut off halfway; allow up to an hour.
+server.requestTimeout=60*60_000;
 const port=process.env.PORT||process.env.WEB_PORT||3000;
 server.listen(port,()=>console.log(`Mudarris listening on ${port}`));

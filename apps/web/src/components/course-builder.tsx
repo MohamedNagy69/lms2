@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import {useRef,useState,type FormEvent} from 'react';
-import {api,post,useAction,useData,type Row} from '@/lib/client';
+import {api,post,uploadFile,useAction,useData,type Row} from '@/lib/client';
 import {BrandIcon} from './brand-icon';
 import {Notice,Status} from './ui';
 import {DeleteDialog,type DeleteTarget} from './delete-dialog';
@@ -127,8 +127,9 @@ function LessonQuickAdd({lectureId,nextOrder,busy,run}:{lectureId:number;nextOrd
   const source=detectSource(link);
   const reset=()=>{setTitle('');setLink('');setFile('');setPreview(false);setBulk('');setError('');};
 
-  const upload=async(selected:File|undefined)=>{if(!selected)return;setUploading(true);setError('');
-    try{const body=new FormData();body.set('file',selected);const result=await api<{path:string}>('/teacher/uploads/videos',{method:'POST',body});setFile(result.path);setLink('');if(!title)setTitle(selected.name.replace(/\.[^.]+$/,''));}
+  const [progress,setProgress]=useState(0);
+  const upload=async(selected:File|undefined)=>{if(!selected)return;setUploading(true);setProgress(0);setError('');
+    try{const body=new FormData();body.set('file',selected);const result=await uploadFile<{path:string}>('/teacher/uploads/videos',body,setProgress);setFile(result.path);setLink('');if(!title)setTitle(selected.name.replace(/\.[^.]+$/,''));}
     catch(e){setError(e instanceof Error?e.message:'تعذر رفع الفيديو');}finally{setUploading(false);}};
 
   const addSingle=(event:FormEvent)=>{event.preventDefault();setError('');
@@ -159,7 +160,7 @@ function LessonQuickAdd({lectureId,nextOrder,busy,run}:{lectureId:number;nextOrd
       <label>رابط الفيديو أو كود التضمين<input dir="ltr" value={link} onChange={e=>{setLink(e.target.value);setFile('');}} placeholder="https://youtu.be/… أو https://drive.google.com/… أو <iframe …>" maxLength={2000} disabled={Boolean(file)}/>
         <small className={`builder-detect${source?' is-ok':link.trim()?' is-bad':''}`}>{file?'هيتستخدم الفيديو المرفوع':source?`✓ ${sourceLabel[source.video_source]}${isEmbedCode(link)?' (كود تضمين)':''}`:link.trim()?'الرابط ده مش يوتيوب ولا جوجل درايف':'الصق رابط يوتيوب أو جوجل درايف أو كود التضمين، أو ارفع فيديو'}</small></label>
       <div className="builder-upload">
-        <label className="button secondary">{uploading?'جارٍ رفع الفيديو وتشفيره…':file?'✓ تم رفع الفيديو — تغيير':'أو ارفع فيديو من جهازك'}<input type="file" accept="video/*,.mkv,.mov,.m4v,.avi" hidden disabled={uploading||busy} onChange={e=>void upload(e.target.files?.[0])}/></label>
+        <label className="button secondary">{uploading?(progress<100?`جارٍ رفع الفيديو… ${progress}% — متقفلش الصفحة`:'تم الرفع، جارٍ التشفير…'):file?'✓ تم رفع الفيديو — تغيير':'أو ارفع فيديو من جهازك'}<input type="file" accept="video/*,.mkv,.mov,.m4v,.avi" hidden disabled={uploading||busy} onChange={e=>void upload(e.target.files?.[0])}/></label>
         <label className="check"><input type="checkbox" checked={preview} onChange={e=>setPreview(e.target.checked)}/>معاينة مجانية للزوار</label>
       </div>
       <button disabled={busy||uploading}>إضافة الدرس</button>

@@ -73,7 +73,7 @@ async function guardAssessment(resource: string, rowId?: number, data?: any) {
     if(current && (data.duration_minutes !== undefined && data.duration_minutes !== current.duration_minutes || data.course_id !== undefined && data.course_id !== current.course_id || data.pass_percent !== undefined && data.pass_percent !== current.pass_percent)) ensure(!await db.one('SELECT id FROM exam_attempts WHERE exam_id=? LIMIT 1',[rowId]),409,'لا يمكن تغيير مدة أو كورس أو نسبة نجاح امتحان له محاولات');
   }
 }
-async function validateRelations(resource: string,data: any) {
+async function validateRelations(resource: string,data: any,current?: any) {
   if(resource === 'exams' && data.lesson_id) {
     const lesson = await db.one('SELECT t.course_id FROM lessons l JOIN lectures t ON t.id=l.lecture_id WHERE l.id=?',[data.lesson_id]);
     ensure(lesson?.course_id === data.course_id,400,'الدرس لا ينتمي للكورس');
@@ -85,8 +85,16 @@ async function validateRelations(resource: string,data: any) {
   if(resource === 'lessons') {
     if(data.video_source === 'youtube') ensure(typeof data.youtube_id === 'string' && data.youtube_id.trim().length > 0,400,'اكتب رابط أو كود فيديو يوتيوب');
     if(data.video_source === 'drive') ensure(typeof data.drive_url === 'string' && data.drive_url.trim().length > 0,400,'اكتب رابط أو كود ملف جوجل درايف');
-    if(data.video_source === 'file') ensure(typeof data.video_file === 'string' && data.video_file.trim().length > 0,400,'اختر ملف الفيديو');
+    // A lesson that never had a file (seeded or a draft) can still be edited; removing an existing file needs a replacement.
+    if(data.video_source === 'file' && (!current || current.video_file)) ensure(typeof data.video_file === 'string' && data.video_file.trim().length > 0,400,'اختر ملف الفيديو');
   }
+}
+// A link pasted into a lesson that is set to "file" but has no file means the teacher wants that link used.
+function inferLessonSource(data: any, current: any) {
+  const merged = {...current,...data};
+  if (merged.video_source !== 'file' || String(merged.video_file || '').trim()) return;
+  if (String(merged.drive_url || '').trim()) data.video_source = 'drive';
+  else if (String(merged.youtube_id || '').trim()) data.video_source = 'youtube';
 }
 // Lessons: turn whatever was pasted (share link, embed code…) into one canonical value before saving.
 // A value that cannot be understood is only an error for the source the lesson actually uses; for an unused
@@ -129,8 +137,8 @@ teacher.patch('/resources/:resource/:id', async(req,res) => {
   const rowId=id(req.params.id), parsed=resourceSchema(name,true).parse(req.body);
   const data=Object.fromEntries(Object.entries(parsed).filter(([key])=>Object.hasOwn(req.body,key))); ensure(Object.keys(data).length,400,'لا توجد تغييرات');
   const current=await db.one(`SELECT * FROM \`${resource.table}\` WHERE id=?`,[rowId]); ensure(current,404,'غير موجود');
-  if (name === 'lessons') normalizeLessonVideo(data, (data as any).video_source ?? current.video_source);
-  await guardAssessment(name,rowId); await guardAssessment(name,rowId,data); await validateRelations(name,{...current,...data});
+  if (name === 'lessons') { inferLessonSource(data, current); normalizeLessonVideo(data, (data as any).video_source ?? current.video_source); }
+  await guardAssessment(name,rowId); await guardAssessment(name,rowId,data); await validateRelations(name,{...current,...data},current);
   await db.run(`UPDATE \`${resource.table}\` SET ? WHERE id=?`,[data,rowId]);
   // Re-convert when a lesson switches to Drive or gets a new Drive link (or the teacher saves again after a failure).
   if (name === 'lessons' && ((data as any).video_source !== undefined || (data as any).drive_url !== undefined)) {
