@@ -111,6 +111,9 @@ try{
   const viaQuery=await a.request(`${videoPath}&start=16&end=`,'GET',undefined,{raw:true});assert.equal(viaQuery.status,200);assert.equal(decrypt(viaQuery),'GHIJ');
   assert.equal((await a.request(videoPath)).status,416);
   assert.equal((await a.request(videoPath,'GET',undefined,{headers:{'Sec-Fetch-Site':'cross-site',Range:'bytes=0-4'}})).status,403);
+  // A download manager handed the chunk URL with the student's cookies: no worker header, or its own user agent.
+  assert.equal((await a.request(`${videoPath}&start=0&end=15`,'GET',undefined,{headers:{'X-Requested-With':''}})).status,403);
+  assert.equal((await a.request(`${videoPath}&start=0&end=15`,'GET',undefined,{headers:{'User-Agent':'Internet Download Manager'}})).status,403);
   assert.equal((await a.request(videoPath,'GET',undefined,{headers:{Referer:'https://attacker.invalid/'}})).status,403);
   assert.equal((await b.request(videoPath,'GET',undefined,{headers:videoHeaders})).status,403);pass('Video streaming requires the site origin and the signed student session');
   const exam=await create('exams',{title:'اختبار',course_id:course,duration_minutes:10,max_attempts:1,require_fullscreen:false});

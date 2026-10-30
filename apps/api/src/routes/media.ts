@@ -141,6 +141,8 @@ async function authorizeVideoStream(req:Request,res:Response){
   // foreign one, or a browser saying the request is cross-site, is still refused. The token stays bound to the
   // session, user, browser and lesson.
   ensure(req.headers['sec-fetch-site']!=='cross-site',403,'الدخول المباشر لرابط البث محظور');
+  // Only the platform's worker sends this header (the CDN passes it on); a download manager handed the URL does not.
+  ensure(req.headers['x-requested-with']==='Mudarris',403,'الدخول المباشر لرابط البث محظور');
   const referer=String(req.headers.referer||'');
   if(referer)try{
     const source=new URL(referer),allowed=new URL(config.origin);
