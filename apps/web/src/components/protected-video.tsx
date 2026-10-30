@@ -87,7 +87,9 @@ export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,u
       const response=await fetch(`/api/lessons/${lesson.id}/chunk?token=${encodeURIComponent(protectedStream?.token||'')}&start=0&end=15`,{credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'Mudarris'}});
       if(!response.ok){const body=await response.json().catch(()=>null);reason=`${body?.error||'رد غير متوقع من السيرفر'} (${response.status})`;}
     }catch{reason='تعذر الاتصال بالسيرفر.';}
-    if(reason||!stalled)setPlayerError(reason||'تعذر تشغيل الملف. أعد فتح الدرس أو راجع صيغة الفيديو.');
+    // The server answers fine but the browser never starts the video: seen in a browser profile where the same lesson
+    // played in a private window, so it points at that browser's extensions (download managers and the like).
+    setPlayerError(reason||(stalled?'الفيديو مش راضي يبدأ على المتصفح ده. ممكن تكون إضافة في المتصفح زي برامج التحميل (IDM) هي السبب: جرّب توقف الإضافات، أو افتح الدرس من نافذة تصفح خفي أو من الموبايل.':'تعذر تشغيل الملف. أعد فتح الدرس أو راجع صيغة الفيديو.'));
   };
   const fileSource=useProtectedSource(Number(lesson.id),isFile?streamUrl:null,protectedStream,()=>setPlayerError('المتصفح ده مش بيدعم التشغيل المحمي (زي نافذة التصفح الخفي في فايرفوكس). افتح الدرس من Chrome أو Edge في نافذة عادية.'));
   // A video that keeps loading without ever failing gets the same check after 20 seconds.
@@ -188,7 +190,7 @@ export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,u
         <span className="player-source-badge"><PlayerIcon name="shield"/>محتوى تعليمي محمي</span>
         {loading&&<span className="vp-spinner" role="status" aria-label="جارٍ التحميل"/>}
         {isFile&&streamUrl&&!fileSource&&!blocked&&<p className="player-empty">جارٍ تجهيز المشغل المحمي…</p>}
-        {isFile&&fileSource&&!blocked&&<video ref={video} src={fileSource}controls={false} controlsList="nodownload noremoteplayback" disablePictureInPicture playsInline preload="metadata" onLoadedMetadata={event=>setDuration(event.currentTarget.duration||0)} onTimeUpdate={event=>{setCurrent(event.currentTarget.currentTime);fileBuffered(event.currentTarget);}} onProgress={event=>fileBuffered(event.currentTarget)} onWaiting={()=>setWaiting(true)} onPlaying={()=>setWaiting(false)} onCanPlay={()=>setWaiting(false)} onPlay={()=>{setPlaying(true);revealControls();}} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} onError={()=>void explainFileError()}/>}
+        {isFile&&fileSource&&!blocked&&<video ref={video} src={fileSource}controls={false} controlsList="nodownload noremoteplayback" disablePictureInPicture playsInline preload="metadata" onLoadedMetadata={event=>{setDuration(event.currentTarget.duration||0);setPlayerError('');}} onTimeUpdate={event=>{setCurrent(event.currentTarget.currentTime);fileBuffered(event.currentTarget);}} onProgress={event=>fileBuffered(event.currentTarget)} onWaiting={()=>setWaiting(true)} onPlaying={()=>setWaiting(false)} onCanPlay={()=>setWaiting(false)} onPlay={()=>{setPlaying(true);revealControls();}} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} onError={()=>void explainFileError()}/>}
         {isYouTube&&<><div ref={youtubeMount} className="youtube-player-mount" aria-hidden="true"/>
           {/* Transparent layer over the whole player: no click can reach YouTube's title, logo, share or suggested-video links. */}
           <span className="youtube-click-shield" aria-hidden="true" onClick={event=>{event.stopPropagation();toggle();}} onDoubleClick={event=>{event.preventDefault();toggleFullscreen();}}/>
