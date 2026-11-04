@@ -36,10 +36,10 @@ export function Home(){
 
     <section className="section about" id="about">
       <div className="about-photo"><img src="/img/dr_nagi-navy.png" alt={site.teacher_name} loading="lazy"/></div>
-      <div className="about-copy"><span className="eyebrow">تعرّف على مدرسك</span><h2>{site.teacher_name}</h2><p>مدرسة اللغة العربية IGCSE — خبرة كبيرة في التعليم الدولي لأكثر من سبعة و عشرين عاما وصاحب مؤلفات كثيرة في هذا المجال</p>
+      <div className="about-copy"><span className="eyebrow">تعرّف على مدرسك</span><h2>{site.teacher_name}</h2><p>مدرس اللغة العربية IGCSE — خبرة كبيرة في التعليم الدولي لأكثر من سبعة وعشرين عاما وصاحب مؤلفات كثيرة في هذا المجال</p>
         <ul className="about-points">
           <li><BrandIcon kind="book"/><span><strong>شرح منظم</strong></span></li>
-          <li><BrandIcon kind="check"/><span><strong>مراجعات و امتحانات دورية</strong></span></li>
+          <li><BrandIcon kind="check"/><span><strong>مراجعات وامتحانات دورية</strong></span></li>
           <li><BrandIcon kind="chart"/><span><strong>متابعة مستمرة و تقارير اسبوعية</strong></span></li>
         </ul>
         <div className="actions"><Link className="button" href="/courses">ابدأ مع {site.teacher_name} <BrandIcon kind="arrow"/></Link><Link className="button secondary" href="/contact">تواصل معنا</Link></div>
@@ -50,7 +50,7 @@ export function Home(){
       <div className="faq-intro"><span className="eyebrow">محتاج تعرف أكثر؟</span><h2>أسئلة شائعة</h2><p className="muted">إجابات سريعة لأكتر الأسئلة اللي بتوصلنا. لو سؤالك مش هنا، كلّمنا.</p><Link className="button secondary" href="/contact">اسأل سؤالك <BrandIcon kind="arrow"/></Link></div>
       <div className="faq-list">
         <details><summary>كيف أشترك في الكورس؟</summary><p>أنشئ حسابك، واختار الكورس، وبعدين اكتب كود التفعيل. الكورسات المجانية بتتفتح فورًا.</p></details>
-        <details><summary>اين اجد الامتحانات؟</summary><p>من صفحة «نتائجي» تقدر تراجع درجاتك وإجاباتك وشرح التصحيح.</p></details>
+        <details><summary>أين أجد الامتحانات؟</summary><p>من صفحة «نتائجي» تقدر تراجع درجاتك وإجاباتك وشرح التصحيح.</p></details>
         <details><summary>ينفع أذاكر من أكتر من جهاز؟</summary><p>حسابك بيشتغل على جهازين بحد أقصى في نفس الوقت. لو دخلت من جهاز تالت، أقدم جهاز بيتسجّل خروجه تلقائيًا.</p></details>
         <details><summary>ليه الفيديو بيقف لو خرجت من الصفحة؟</summary><p>لحماية المحتوى، أي محاولة تصوير أو تسجيل للشاشة أو الخروج من نافذة الدرس أثناء المشاهدة بتوقف الحساب، ومايرجعش غير بعد مراجعة المدرس.</p></details>
       </div>
