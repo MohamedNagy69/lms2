@@ -36,10 +36,10 @@ export function Home(){
 
     <section className="section about" id="about">
       <div className="about-photo"><img src="/img/dr_nagi-navy.png" alt={site.teacher_name} loading="lazy"/></div>
-      <div className="about-copy"><span className="eyebrow">تعرّف على مدرسك</span><h2>{site.teacher_name}</h2><p>مدرس اللغة العربية IGCSE — خبرة كبيرة في التعليم الدولي لأكثر من سبعة و عشرين عاما وصاحب مؤلفات كثيرة في هذا المجال</p>
+      <div className="about-copy"><span className="eyebrow">تعرّف على مدرسك</span><h2>{site.teacher_name}</h2><p>مدرس اللغة العربية IGCSE — خبرة كبيرة في التعليم الدولي لأكثر من سبعة وعشرين عاما وصاحب مؤلفات كثيرة في هذا المجال</p>
         <ul className="about-points">
           <li><BrandIcon kind="book"/><span><strong>شرح منظم</strong></span></li>
-          <li><BrandIcon kind="check"/><span><strong>مراجعات و امتحانات دورية</strong></span></li>
+          <li><BrandIcon kind="check"/><span><strong>مراجعات وامتحانات دورية</strong></span></li>
           <li><BrandIcon kind="chart"/><span><strong>متابعة مستمرة و تقارير اسبوعية</strong></span></li>
         </ul>
         <div className="actions"><Link className="button" href="/courses">ابدأ مع {site.teacher_name} <BrandIcon kind="arrow"/></Link><Link className="button secondary" href="/contact">تواصل معنا</Link></div>
