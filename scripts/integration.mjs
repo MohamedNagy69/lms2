@@ -45,6 +45,13 @@ try{
   const registered=await b.request('/auth/register','POST',{username:'student_b',password,first_name:'طالب',phone:'01098765432',role:'teacher',is_superuser:true});assert.equal(registered.status,201);assert.equal(registered.body.user.role,'student');assert.equal(registered.body.user.is_teacher,false);pass('Registration cannot elevate privileges');
   assert.equal((await b.request('/teacher/dashboard')).status,403);assert.equal((await anon.request('/teacher/dashboard')).status,401);pass('Teacher endpoints enforce authentication and roles');
   assert.equal((await teacher.request('/teacher/resources/grades','POST',{name:'Bad origin'},{headers:{Origin:'https://attacker.invalid'}})).status,403);pass('Cross-origin mutations are rejected');
+  // A deployment whose WEB_ORIGIN was left at another value still accepts the browser's own site (Origin host = Host).
+  const sameHost=await fetch(`http://127.0.0.1:${port}/api/auth/login`,{method:'POST',headers:{Origin:`http://127.0.0.1:${port}`,'Content-Type':'application/json'},body:JSON.stringify({username:'instructor',password})});
+  assert.equal(sameHost.status,200);
+  const spoofed=await fetch(`http://127.0.0.1:${port}/api/auth/login`,{method:'POST',headers:{Origin:'https://127.0.0.1.attacker.invalid','Content-Type':'application/json'},body:JSON.stringify({username:'instructor',password})});
+  assert.equal(spoofed.status,403);
+  const behindProxy=await fetch(`http://127.0.0.1:${port}/api/auth/login`,{method:'POST',headers:{Origin:'https://site.behind-cdn.invalid','Sec-Fetch-Site':'same-origin','Content-Type':'application/json'},body:JSON.stringify({username:'instructor',password})});
+  assert.equal(behindProxy.status,200);pass('Same-host or browser-confirmed same-origin requests are accepted when WEB_ORIGIN differs, foreign ones are not');
   async function create(resource,data){const r=await teacher.request(`/teacher/resources/${resource}`,'POST',data);assert.equal(r.status,201,JSON.stringify(r.body));return r.body.id;}
   const grade=await create('grades',{name:'الصف التجريبي'});
   const privateAnnouncement=await create('announcements',{title:'إعلان خاص بالصف',body:'للطلاب في هذا الصف فقط',grade_id:grade});

@@ -14,30 +14,20 @@ import {media} from './routes/media.js';
 import {startNotificationWorker} from './services/notifications.js';
 import {startTelegramPoller} from './services/telegram.js';
 import {resumeDriveImports} from './lib/drive-import.js';
+import {trustedOrigin} from './lib/origin.js';
 
 if(config.secret.length<32 || config.secret==='replace-with-a-long-random-secret') throw new Error('Set JWT_SECRET to a random value of at least 32 characters in .env');
 export const app=express();
 app.disable('x-powered-by');
 if(process.env.TRUST_PROXY==='1') app.set('trust proxy',1);
 app.use(helmet({crossOriginResourcePolicy:{policy:'same-site'}}));
-function allowedOrigin(origin:string){
-  if(origin===config.origin)return true;
-  if(config.production)return false;
-  try{
-    const source=new URL(origin),configured=new URL(config.origin);
-    return ['localhost','127.0.0.1'].includes(source.hostname)
-      && ['localhost','127.0.0.1'].includes(configured.hostname)
-      && source.protocol===configured.protocol
-      && source.port===configured.port;
-  }catch{return false;}
-}
-app.use(cors({origin(origin,callback){callback(null,!origin||allowedOrigin(origin));},credentials:true}));
+app.use(cors({origin(origin,callback){callback(null,!origin||trustedOrigin(origin));},credentials:true}));
 app.use(requestContext);
 app.use(express.json({limit:'2mb'}),cookieParser());
 app.use((req,res,next)=>{
   if(!['GET','HEAD','OPTIONS'].includes(req.method)){
     const origin=req.headers.origin;
-    if(origin && !allowedOrigin(origin)){res.status(403).json({error:'مصدر الطلب غير مسموح'});return;}
+    if(origin && !trustedOrigin(origin,req)){res.status(403).json({error:'مصدر الطلب غير مسموح'});return;}
     if(req.headers['sec-fetch-site']==='cross-site'){res.status(403).json({error:'طلب غير مسموح'});return;}
     // Browser mutations must carry an Origin; non-browser clients can use the custom header.
     if(!origin && req.headers['x-requested-with']!=='Mudarris'){res.status(403).json({error:'مصدر الطلب مفقود'});return;}

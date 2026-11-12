@@ -23,7 +23,9 @@ dotenv.config({ path: path.join(projectRoot, '.env') });
 export const config = {
   port: Number(process.env.API_PORT || 4000),
   production: process.env.NODE_ENV === 'production',
-  origin: process.env.WEB_ORIGIN || 'http://localhost:3000',
+  // First entry of WEB_ORIGIN (comma-separated list allowed) is the site's canonical address for links.
+  origin: (process.env.WEB_ORIGIN || '').split(',').map(item => item.trim()).find(Boolean)?.replace(/\/+$/, '') || 'http://localhost:3000',
+  origins: process.env.WEB_ORIGIN || 'http://localhost:3000',
   secret: process.env.JWT_SECRET || '',
   uploads: path.resolve(projectRoot, process.env.UPLOAD_ROOT || 'apps/api/uploads'),
   db: {

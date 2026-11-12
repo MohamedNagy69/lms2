@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { db } from '../db/index.js';
 import { config } from '../config.js';
+import { trustedOrigin } from '../lib/origin.js';
 import { authenticated, teacherOnly, isTeacher } from '../lib/auth.js';
 import { authorizedLesson } from '../lib/catalog.js';
 import { ensure, id, HttpError } from '../lib/errors.js';
@@ -145,9 +146,7 @@ async function authorizeVideoStream(req:Request,res:Response){
   ensure(req.headers['x-requested-with']==='Mudarris',403,'الدخول المباشر لرابط البث محظور');
   const referer=String(req.headers.referer||'');
   if(referer)try{
-    const source=new URL(referer),allowed=new URL(config.origin);
-    const localAlias=!config.production && ['localhost','127.0.0.1'].includes(source.hostname) && ['localhost','127.0.0.1'].includes(allowed.hostname) && source.port===allowed.port && source.protocol===allowed.protocol;
-    ensure(source.origin===allowed.origin||localAlias,403,'الدخول المباشر لرابط البث محظور');
+    ensure(trustedOrigin(new URL(referer).origin,req),403,'الدخول المباشر لرابط البث محظور');
   }catch{throw new HttpError(403,'الدخول المباشر لرابط البث محظور');}
   res.setHeader('Cache-Control','private, no-cache, no-store, must-revalidate, max-age=0');
   res.setHeader('Pragma','no-cache');res.setHeader('Expires','0');res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive, nosnippet');
