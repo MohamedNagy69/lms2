@@ -49,7 +49,9 @@ try{
   const sameHost=await fetch(`http://127.0.0.1:${port}/api/auth/login`,{method:'POST',headers:{Origin:`http://127.0.0.1:${port}`,'Content-Type':'application/json'},body:JSON.stringify({username:'instructor',password})});
   assert.equal(sameHost.status,200);
   const spoofed=await fetch(`http://127.0.0.1:${port}/api/auth/login`,{method:'POST',headers:{Origin:'https://127.0.0.1.attacker.invalid','Content-Type':'application/json'},body:JSON.stringify({username:'instructor',password})});
-  assert.equal(spoofed.status,403);pass('Same-host origins are accepted when WEB_ORIGIN differs, foreign ones are not');
+  assert.equal(spoofed.status,403);
+  const behindProxy=await fetch(`http://127.0.0.1:${port}/api/auth/login`,{method:'POST',headers:{Origin:'https://site.behind-cdn.invalid','Sec-Fetch-Site':'same-origin','Content-Type':'application/json'},body:JSON.stringify({username:'instructor',password})});
+  assert.equal(behindProxy.status,200);pass('Same-host or browser-confirmed same-origin requests are accepted when WEB_ORIGIN differs, foreign ones are not');
   async function create(resource,data){const r=await teacher.request(`/teacher/resources/${resource}`,'POST',data);assert.equal(r.status,201,JSON.stringify(r.body));return r.body.id;}
   const grade=await create('grades',{name:'الصف التجريبي'});
   const privateAnnouncement=await create('announcements',{title:'إعلان خاص بالصف',body:'للطلاب في هذا الصف فقط',grade_id:grade});

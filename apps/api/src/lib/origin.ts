@@ -36,6 +36,9 @@ export function trustedOrigin(origin:string,req?:Request){
   try{source=new URL(origin);}catch{return false;}
   if(origins.has(source.origin))return true;
   if(req&&requestHosts(req).has(source.host.toLowerCase()))return true;
+  // Browsers set Sec-Fetch-Site themselves (page scripts cannot), so "same-origin" proves the request came from this
+  // site's own pages even when a proxy or CDN in front of the app rewrote the Host header.
+  if(req&&req.headers['sec-fetch-site']==='same-origin')return true;
   if(config.production||!configured)return false;
   return local.includes(source.hostname)&&local.includes(configured.hostname)
     &&source.protocol===configured.protocol&&source.port===configured.port;
