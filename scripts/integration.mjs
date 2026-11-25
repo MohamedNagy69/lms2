@@ -181,6 +181,15 @@ try{
   assert.equal((await devices[1].request('/auth/me')).body.user,null);
   assert.equal((await anon.request('/auth/login','POST',{username:'legacy',password})).status,401);
   assert.equal((await anon.request('/auth/login','POST',{username:'legacy',password:newPassword})).status,200);pass('Changing password preserves the current session and revokes other devices atomically');
+  const left=await anon.request('/security/record-violation','POST',{type:'focus_lost'});
+  assert.equal(left.body.status,'recorded');
+  const [leftRow]=await connection.query('SELECT is_security_banned,locked_until,screenshot_strikes FROM users WHERE id=2');
+  assert.equal(leftRow[0].is_security_banned,0);assert.equal(leftRow[0].locked_until,null);assert.equal(leftRow[0].screenshot_strikes,0);
+  const [leftEvents]=await connection.query("SELECT COUNT(*) AS n FROM security_events WHERE student_id=2 AND event_type='focus_lost'");assert.equal(Number(leftEvents[0].n),1);
+  assert((await anon.request('/auth/me')).body.user);assert.equal((await anon.request(`/lessons/${lesson}`)).status,200);
+  assert.equal((await anon.request('/auth/security-lock')).body.remaining_seconds,0);
+  assert.equal((await client().request('/security/record-violation','POST',{type:'focus_lost'})).body.status,'ignored');
+  pass('Leaving the lesson window is only logged: no ban, strike, timer or sign-out');
   console.log(`Integration checks passed: ${checks}`);
 }catch(error){console.error(log);throw error;}finally{
   if(server){server.kill();await new Promise(r=>setTimeout(r,300));}

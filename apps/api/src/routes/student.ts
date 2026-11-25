@@ -48,10 +48,15 @@ student.get('/lessons/:id', async (req, res) => {
 });
 // Any capture attempt locks this browser for the timer set in the dashboard. A student is also banned at once (until the teacher
 // restores the account) and signed out of every device. A banned student must still be able to report further attempts.
+// Leaving the lesson window (focus_lost) only pauses the video: it is logged for the teacher, with no ban, strike or timer.
 student.post('/security/record-violation', async (req, res) => {
   const { type } = z.object({ type: z.enum(['screenshot','screen_recording','screen_selection','print','devtools','focus_lost']) }).parse(req.body);
   const violationLabel=({screenshot:'محاولة تصوير الشاشة',screen_recording:'محاولة تسجيل الشاشة',screen_selection:'محاولة تحديد أو قص محتوى الفيديو',print:'محاولة طباعة المحتوى',devtools:'محاولة فتح أدوات المطور',focus_lost:'مغادرة نافذة الدرس (محاولة تصوير أو تسجيل الشاشة)'} as const)[type];
   if(isTeacher(req.user)){res.json({status:'ignored'});return;}
+  if(type==='focus_lost'){
+    if(req.user)await db.run('INSERT INTO security_events(student_id,event_type) VALUES (?,?)',[req.user.id,type]);
+    res.json({status:req.user?'recorded':'ignored'});return;
+  }
   const minutes=await captureLockMinutes(),existing=await captureLockRemaining(req),until=existing?Date.now()+existing*1000:Date.now()+minutes*60_000;
   // Guests watching a free lesson have no account to ban, so only this browser is locked.
   if(!req.user){setCaptureLock(res,0,until);res.json({status:'locked',remaining_seconds:Math.ceil((until-Date.now())/1000),duration_seconds:minutes*60,message:`تم رصد ${violationLabel}. تم قفل المنصة على هذا الجهاز.`});return;}

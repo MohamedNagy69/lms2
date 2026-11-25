@@ -67,7 +67,7 @@ function useProtectedSource(lessonId:number,streamUrl:string|null,stream:Protect
 }
 
 export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,user,watermark}:{lesson:Row;streamUrl:string|null;protectedStream?:ProtectedStream|null;embedUrl:string|null;user:Row|null;watermark:boolean}){
-  const container=useRef<HTMLDivElement>(null),video=useRef<HTMLVideoElement>(null),drive=useRef<HTMLIFrameElement>(null),youtubeMount=useRef<HTMLDivElement>(null),youtube=useRef<YouTubePlayer|null>(null),recording=useRef(false),reported=useRef(false),lastShortcut=useRef(0);
+  const container=useRef<HTMLDivElement>(null),video=useRef<HTMLVideoElement>(null),drive=useRef<HTMLIFrameElement>(null),youtubeMount=useRef<HTMLDivElement>(null),youtube=useRef<YouTubePlayer|null>(null),recording=useRef(false),reported=useRef(false),lastShortcut=useRef(0),lastFocusReport=useRef(0);
   const initialLock=user?.locked_until?new Date(user.locked_until).getTime():0;
   const [curtain,setCurtain]=useState(false),[blocked,setBlocked]=useState(initialLock>Date.now()?'تم إيقاف الفيديو لمدة ساعة بسبب مخالفة حماية المحتوى':''),[lockUntil,setLockUntil]=useState(initialLock),[lockSeconds,setLockSeconds]=useState(Math.max(0,Math.ceil((initialLock-Date.now())/1000))),[position,setPosition]=useState({top:14,left:8}),[playing,setPlaying]=useState(false),[current,setCurrent]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(100),[speed,setSpeed]=useState(1),[playerError,setPlayerError]=useState(''),[fullscreen,setFullscreen]=useState(false),[ytState,setYtState]=useState(-1),[muted,setMuted]=useState(false),[autoMuted,setAutoMuted]=useState(false),[teacherNotice,setTeacherNotice]=useState(false),[buffered,setBuffered]=useState(0),[waiting,setWaiting]=useState(false),[controlsShown,setControlsShown]=useState(true);
   const hideControlsTimer=useRef<number|undefined>(undefined),overControls=useRef(false);
@@ -150,9 +150,9 @@ export function ProtectedVideo({lesson,streamUrl,protectedStream=null,embedUrl,u
     // Windows delivers PrintScreen only on keyup, so both phases are watched.
     const securityKey=(event:KeyboardEvent)=>{const type=captureShortcut(event);if(type){event.preventDefault();event.stopPropagation();if(type==='screenshot')void navigator.clipboard?.writeText('').catch(()=>{});if(event.repeat||Date.now()-lastShortcut.current<1500)return;lastShortcut.current=Date.now();record(type);return;}const key=event.key.toLowerCase();if((event.ctrlKey||event.metaKey)&&['u','s','p'].includes(key)){event.preventDefault();event.stopPropagation();}};
     const beforePrint=()=>{pause();setCurtain(true);},context=(event:MouseEvent)=>{if((event.target as Element)?.closest('.video-wrap'))event.preventDefault();},selection=(event:Event)=>{if((event.target as Element)?.closest('.video-wrap'))event.preventDefault();};
-    // Snipping and recording tools swallow their shortcuts, so the page only sees its window lose focus.
-    // Leaving the lesson window is therefore treated as a capture attempt.
-    const lostFocus=()=>{pause();setCurtain(true);record('focus_lost');};
+    // Leaving the lesson window only hides and pauses the video until the student comes back. It is logged for the
+    // teacher (at most once a minute) but never bans the account or starts a timer.
+    const lostFocus=()=>{pause();setCurtain(true);if(user&&!user.is_teacher&&Date.now()-lastFocusReport.current>60_000){lastFocusReport.current=Date.now();void post('/security/record-violation',{type:'focus_lost'}).catch(()=>{});}};
     // Clicking into the Drive player blurs this window without leaving the page, so that one blur is ignored.
     const hide=()=>{if(document.activeElement===drive.current)return;lostFocus();};
     const focus=()=>{if(!blocked)setCurtain(false);};
